@@ -5,13 +5,13 @@
   background-color: #1f3328;
   /* color: #faf7f0; */
   color: #c9a227;
-  width: 243%;
+  width: 254%;
   padding: 0.8rem 1.5rem;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
   position: sticky;
   top: 0;
   z-index: 1000;
-  margin-top: -60%;
+  margin-top: -63%;
 }
 
 /* ===== Container now full width but spaced ===== */

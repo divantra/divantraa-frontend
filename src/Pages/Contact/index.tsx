@@ -1,14 +1,12 @@
 import Headers from '../../components/Header';
-import './Contact.css';
-const Contact = () => {
+const Home = () => {
   return (
-    <div className="contact-container">
+    <div>
       <Headers />
-      <h1>Contact Us</h1>
-      <p>Email: support@divantranaturals.com</p>
-      <p>Phone: +91 98765 43210</p>
+      <h1>Contact of Divantra Naturals</h1>
+      <p>Pure. Healthy. Trusted edible oils for your kitchen.</p>
     </div>
   );
 };
 
-export default Contact;
+export default Home;
