@@ -1,0 +1,86 @@
+/* ===== Header Base Styles ===== */
+.header {
+  /* background-color: #1a1a1a;
+  color: #f5f5f5; */
+  background-color: #1f3328;
+  /* color: #faf7f0; */
+  color: #c9a227;
+  width: 243%;
+  padding: 0.8rem 1.5rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  margin-top: -60%;
+}
+
+/* ===== Container now full width but spaced ===== */
+.header__container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%; /* ensure full stretch */
+  /* max-width: none; */
+}
+
+/* ===== Logo ===== */
+.header__logo {
+  font-size: 1.4rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+/* ===== Nav Links ===== */
+.header__nav {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.header__link {
+  text-decoration: none;
+  color: #e2e8f0;
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+.header__link:hover {
+  color: #c9a227;
+}
+
+/* ===== Hamburger Menu ===== */
+.header__toggle {
+  display: none;
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 1.6rem;
+  cursor: pointer;
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 768px) {
+  .header__toggle {
+    display: block;
+  }
+
+  .header__nav {
+    position: absolute;
+    top: 60px;
+    right: 0;
+    background-color: #0f172a;
+    flex-direction: column;
+    width: 100%;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+  }
+
+  .header__nav--open {
+    max-height: 200px;
+  }
+
+  .header__link {
+    padding: 1rem;
+    border-top: 1px solid #1e293b;
+  }
+}
