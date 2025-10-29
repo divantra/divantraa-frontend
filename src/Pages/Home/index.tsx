@@ -1,10 +1,18 @@
-import Headers from '../../components/Header';
+import HeroSection from './HeroSection';
+import AboutSection from './AboutSection';
+import ProductsSection from './ProductsSection';
+import TestimonialsSection from './TestimonialsSection';
+import NewsletterSection from './NewsletterSection';
+import './Home.css';
+
 const Home = () => {
   return (
-    <div>
-      <Headers />
-      <h1>Welcome to Divantra Naturals</h1>
-      <p>Pure. Healthy. Trusted edible oils for your kitchen.</p>
+    <div className="home">
+      <HeroSection />
+      <AboutSection />
+      <ProductsSection />
+      <TestimonialsSection />
+      <NewsletterSection />
     </div>
   );
 };
