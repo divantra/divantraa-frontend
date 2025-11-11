@@ -3,7 +3,7 @@ import TopHeader from './TopHeader';
 import Navbar from './Navbar';
 import './Header.css';
 
-const Header = () => {
+const Header: React.FC = () => {
   const [showTopHeader, setShowTopHeader] = useState(true);
 
   useEffect(() => {
