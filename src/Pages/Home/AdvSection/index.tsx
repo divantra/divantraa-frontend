@@ -1,7 +1,7 @@
 import React from 'react';
 import './AdvSection.css';
 
-const AdvSection = () => {
+const AdvSection: React.FC = () => {
   return (
     <section className="hero">
       <div className="hero-content">

@@ -1,4 +1,3 @@
-import React from 'react';
 import './AboutSection.css';
 import { FaTree, FaTractor, FaClipboardCheck } from 'react-icons/fa';
 import { GiOilDrum } from 'react-icons/gi';
