@@ -1,4 +1,4 @@
-import HeroSection from './HeroSection';
+import HeroSection from './AdvSection';
 import AboutSection from './AboutSection';
 import ProductsSection from './ProductsSection';
 import TestimonialsSection from './TestimonialsSection';

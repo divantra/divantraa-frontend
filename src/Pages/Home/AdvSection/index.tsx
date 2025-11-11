@@ -1,7 +1,10 @@
-const HeroSection = () => {
+import React from 'react';
+import './AdvSection.css';
+
+const AdvSection = () => {
   return (
     <section className="hero">
-      <div className="hero__content">
+      <div className="hero-content">
         <h1>Welcome to Divantra Naturals</h1>
         <p>Pure. Sustainable. Handcrafted skincare from nature’s essence.</p>
         <button className="btn-primary">Shop Now</button>
@@ -10,4 +13,4 @@ const HeroSection = () => {
   );
 };
 
-export default HeroSection;
+export default AdvSection;

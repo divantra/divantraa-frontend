@@ -1,5 +1,5 @@
 import { useState } from 'react';
-
+import './NewsletterSection.css';
 const NewsletterSection = () => {
   const [email, setEmail] = useState('');
   const [submitted, setSubmitted] = useState(false);
@@ -13,8 +13,10 @@ const NewsletterSection = () => {
 
   return (
     <section className="newsletter">
-      <h2>Subscribe to Our Newsletter</h2>
-      <p>Get the latest updates, offers, and wellness tips straight to your inbox.</p>
+      <div className="newsletter-overlay">
+        <h2>Subscribe to Our Newsletter</h2>
+        <p>Get the latest updates, offers, and wellness tips straight to your inbox.</p>
+      </div>
 
       <form onSubmit={handleSubmit} className="newsletter__form">
         <input

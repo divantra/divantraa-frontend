@@ -4,7 +4,7 @@ import Footer from './components/Footer';
 
 function App() {
   return (
-    <>
+    <div style={{ margin: 0, padding: 0 }}>
       <Header />
       <main>
         <Outlet />
@@ -14,7 +14,7 @@ function App() {
         <p>© 2025 My React Vite App</p>
       </footer> */}
       <Footer />
-    </>
+    </div>
   );
 }
 

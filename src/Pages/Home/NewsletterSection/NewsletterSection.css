@@ -1,0 +1,58 @@
+/* Newsletter */
+.newsletter {
+  background: url('/images/divantra-above-us-background-image.jpg');
+  color: rgb(214, 14, 14);
+}
+.newsletter__form {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1rem;
+  flex-wrap: wrap;
+}
+.newsletter__form input {
+  padding: 0.75rem;
+  border-radius: 8px;
+  border: none;
+  width: 280px;
+  font-size: 1rem;
+}
+
+/* ✅ White background box around text */
+.newsletter-overlay {
+  background-color: rgba(255, 255, 255, 0.85); /* semi-transparent white */
+  display: inline-block;
+  padding: 30px 40px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.newsletter-overlay h2 {
+  font-size: 2rem;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.newsletter-overlay p {
+  font-size: 1rem;
+  color: #333;
+}
+
+/* ✅ Responsive for mobile */
+@media (max-width: 768px) {
+  .newsletter-section {
+    padding: 60px 15px;
+  }
+
+  .newsletter-overlay {
+    padding: 20px;
+  }
+
+  .newsletter-overlay h2 {
+    font-size: 1.5rem;
+  }
+
+  .newsletter-overlay p {
+    font-size: 0.95rem;
+  }
+}
