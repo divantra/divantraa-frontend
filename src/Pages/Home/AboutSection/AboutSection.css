@@ -1,0 +1,70 @@
+.why-choose-divantraa {
+  background-color: #f8f9f3;
+  padding: 60px 20px;
+  text-align: center;
+}
+
+.why-choose-divantraa h2 {
+  color: #124734;
+  font-size: 2rem;
+  font-weight: 600;
+  margin-bottom: 50px;
+}
+
+.features-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 40px;
+  justify-items: center;
+}
+
+.feature-card {
+  max-width: 250px;
+  background-color: transparent;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.icon {
+  color: #124734;
+  font-size: 2.5rem;
+  margin-bottom: 15px;
+}
+
+.feature-card h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #124734;
+  margin-bottom: 10px;
+}
+
+.feature-card p {
+  font-size: 0.95rem;
+  color: #555;
+  line-height: 1.5;
+}
+
+/* ✅ Responsive design */
+@media (max-width: 768px) {
+  .why-choose-divantraa {
+    padding: 40px 15px;
+  }
+
+  .why-choose-divantraa h2 {
+    font-size: 1.7rem;
+    margin-bottom: 30px;
+  }
+
+  .features-container {
+    gap: 30px;
+  }
+
+  .feature-card {
+    max-width: 100%;
+  }
+
+  .feature-card p {
+    font-size: 0.9rem;
+  }
+}

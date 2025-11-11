@@ -1,31 +1,37 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import TopHeader from './TopHeader';
+import Navbar from './Navbar';
 import './Header.css';
 
 const Header = () => {
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [showTopHeader, setShowTopHeader] = useState(true);
+
+  useEffect(() => {
+    let lastScrollY = window.scrollY;
+
+    const controlHeader = () => {
+      const currentScrollY = window.scrollY;
+
+      // Only hide when scrolling down a noticeable amount
+      if (currentScrollY - lastScrollY > 25) {
+        setShowTopHeader(false);
+      }
+      // Show again when scrolling up
+      else if (lastScrollY - currentScrollY > 25) {
+        setShowTopHeader(true);
+      }
+
+      lastScrollY = currentScrollY;
+    };
+
+    window.addEventListener('scroll', controlHeader);
+    return () => window.removeEventListener('scroll', controlHeader);
+  }, []);
 
   return (
     <header className="header">
-      <div className="header__logo">Divantra Naturals</div>
-      <div className="header__container">
-        <button
-          className="header__toggle"
-          onClick={() => setMenuOpen(!menuOpen)}
-          aria-label="Toggle menu"
-        >
-          ☰
-        </button>
-
-        <nav className={`header__nav ${menuOpen ? 'header__nav--open' : ''}`}>
-          <Link to="/" className="header__link" onClick={() => setMenuOpen(false)}>
-            Home
-          </Link>
-          <Link to="/contact" className="header__link" onClick={() => setMenuOpen(false)}>
-            Contact
-          </Link>
-        </nav>
-      </div>
+      {showTopHeader && <TopHeader />}
+      <Navbar />
     </header>
   );
 };
