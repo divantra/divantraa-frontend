@@ -16,13 +16,15 @@ body {
 .hero {
   height: 50vh;
   width: 100%;
-  background: url('/images/divantraa-default-page-background.jpg');
+  background: url('/images/divantraa-default-page-background.jpg') center center / cover no-repeat;
   color: white;
   display: flex;
   align-items: center;
   justify-content: center;
   text-align: center;
   position: relative;
+
+  animation: moveBackground 20s ease-in-out infinite alternate;
 }
 
 /* Optional: Dark overlay for readability */
