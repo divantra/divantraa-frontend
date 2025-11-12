@@ -3,45 +3,10 @@ import './Footer.css';
 import { FaFacebookF, FaInstagram, FaTwitter, FaWhatsapp } from 'react-icons/fa';
 
 const Footer: React.FC = () => {
-  const certs = [
-    { src: '/images/certs/iso.png', alt: 'ISO 9001' },
-    { src: '/images/certs/fssai.png', alt: 'FSSAI' },
-    { src: '/images/certs/fda.png', alt: 'FDA' },
-    { src: '/images/certs/gmp.png', alt: 'GMP Certified' },
-    { src: '/images/certs/iaf.png', alt: 'IAF' },
-  ];
-
-  // Inline fallback if any image fails
-  const svgFallbackDataUri =
-    'data:image/svg+xml;utf8,' +
-    encodeURIComponent(
-      `<svg xmlns='http://www.w3.org/2000/svg' width='200' height='60' viewBox='0 0 200 60'>
-         <rect width='100%' height='100%' fill='%230a3d2e'/>
-         <text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%23d4af37' font-family='Poppins, sans-serif' font-size='12'>Divantraa</text>
-       </svg>`
-    );
-
-  const handleImgError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
-    const el = e.currentTarget;
-    if (!el.dataset.fallbackApplied) {
-      el.dataset.fallbackApplied = 'true';
-      el.src = '/images/certs/placeholder.png'; // optional
-      setTimeout(() => {
-        if (el.naturalWidth === 0) {
-          el.src = svgFallbackDataUri;
-        }
-      }, 50);
-    }
-  };
-
   return (
     <footer className="divantra-footer">
       {/* Certifications */}
-      <div className="footer-certifications">
-        {certs.map((c) => (
-          <img key={c.alt} src={c.src} alt={c.alt} onError={handleImgError} loading="lazy" />
-        ))}
-      </div>
+      <div className="footer-certifications"></div>
 
       {/* Main Content */}
       <div className="footer-container">
@@ -51,10 +16,10 @@ const Footer: React.FC = () => {
 
           <div className="footer-address">
             <p>
-              <strong>Corporate Office:</strong> Sector 44, Gurugram
+              <strong>Corporate Office:</strong> Bangalore
             </p>
             <p>
-              <strong>Registered Office:</strong> IMT Manesar, Gurugram
+              <strong>Registered Office:</strong> Bangalore
             </p>
           </div>
 
@@ -105,12 +70,6 @@ const Footer: React.FC = () => {
                 <img
                   src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg"
                   alt="Google Play"
-                />
-              </a>
-              <a href="https://www.apple.com/in/app-store/" target="_blank" rel="noreferrer">
-                <img
-                  src="https://upload.wikimedia.org/wikipedia/commons/9/96/Download_on_the_App_Store_Badge.svg"
-                  alt="App Store"
                 />
               </a>
             </div>

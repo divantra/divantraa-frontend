@@ -1,7 +1,10 @@
-import React from 'react';
-import ProductCard, { type ProductCardProps } from '../../../components/ProductCard';
+import React, { useState, useMemo } from 'react';
+import ProductCard, { type ProductCardProps } from '../../ProductCard';
 import './ProductsSection.css';
+
 const ProductsSection: React.FC = () => {
+  const [searchTerm, setSearchTerm] = useState('');
+
   const products: ProductCardProps[] = [
     {
       image: '/images/Oils/groundnut-oil.png',
@@ -85,15 +88,31 @@ const ProductsSection: React.FC = () => {
       discount: 8,
     },
   ];
+
+  // 🔍 Filter products by title
+  const filteredProducts = useMemo(() => {
+    return products.filter((p) => p.title.toLowerCase().includes(searchTerm.toLowerCase()));
+  }, [searchTerm]);
+
   return (
-    <section className="products">
-      <h2>Our Products</h2>
-      <div className="products__grid">
-        <div className="home-products">
-          {products.map((p, i) => (
-            <ProductCard key={i} {...p} />
-          ))}
-        </div>
+    <section className="products-section">
+      <div className="products-header">
+        <h2>Our Products</h2>
+        <input
+          type="text"
+          className="search-bar"
+          placeholder="Search products..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+      </div>
+
+      <div className="products-grid">
+        {filteredProducts.length > 0 ? (
+          filteredProducts.map((p, i) => <ProductCard key={i} {...p} />)
+        ) : (
+          <p className="no-results">No products found.</p>
+        )}
       </div>
     </section>
   );

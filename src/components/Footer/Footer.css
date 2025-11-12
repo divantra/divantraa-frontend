@@ -1,5 +1,6 @@
 .divantra-footer {
   background-color: #0a3d2e;
+  background-image: url('/public/images/divantraa-footer-background-image.webp');
   color: #ffffff;
   font-family: 'Poppins', sans-serif;
   padding-top: 2rem;
@@ -8,13 +9,18 @@
 
 /* Certifications Row */
 .footer-certifications {
+  background-image: url('/images/liecence-image.png');
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain; /* Keeps full image visible */
+
+  width: 50%;
+  height: 18vh;
+  margin: 0 auto; /* Centers the div horizontally */
+
   display: flex;
-  justify-content: center;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 2rem;
-  padding: 1rem 2rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  justify-content: center;
 }
 
 .footer-certifications img {
@@ -206,7 +212,8 @@
     margin: 0 auto;
   }
 
-  .footer-certifications img {
-    height: 35px;
+  .footer-certifications {
+    width: 90%;
+    height: 20vh;
   }
 }
