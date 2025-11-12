@@ -3,39 +3,10 @@ import './Footer.css';
 import { FaFacebookF, FaInstagram, FaTwitter, FaWhatsapp } from 'react-icons/fa';
 
 const Footer: React.FC = () => {
-  const certs = [
-    { src: '/images/certs/iso.png', alt: 'ISO 9001' },
-    { src: '/images/certs/fssai.png', alt: 'FSSAI' },
-    { src: '/images/certs/fda.png', alt: 'FDA' },
-    { src: '/images/certs/gmp.png', alt: 'GMP Certified' },
-    { src: '/images/certs/iaf.png', alt: 'IAF' },
-  ];
-
-  const handleImgError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
-    const el = e.currentTarget;
-    if (!el.dataset.fallbackApplied) {
-      el.dataset.fallbackApplied = 'true';
-      el.src = '/images/certs/placeholder.png'; // optional
-    }
-  };
-
   return (
     <footer className="divantra-footer">
       {/* Certifications */}
-      <div className="footer-certifications">
-        {/* <img
-          className="image-card"
-          src="./images/liecence-image.png"
-          alt="License Image"
-          // width={100}
-          style={{
-            border: '2px solid red',
-            width: 'auto',
-            height: 'auto',
-            display: 'block',
-          }}
-        /> */}
-      </div>
+      <div className="footer-certifications"></div>
 
       {/* Main Content */}
       <div className="footer-container">
