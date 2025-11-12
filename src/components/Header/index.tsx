@@ -8,24 +8,38 @@ const Header: React.FC = () => {
 
   useEffect(() => {
     let lastScrollY = window.scrollY;
+    let ticking = false;
 
     const controlHeader = () => {
       const currentScrollY = window.scrollY;
 
-      // Only hide when scrolling down a noticeable amount
-      if (currentScrollY - lastScrollY > 25) {
-        setShowTopHeader(false);
+      // Only trigger after a small threshold
+      if (Math.abs(currentScrollY - lastScrollY) < 50) {
+        ticking = false;
+        return;
       }
-      // Show again when scrolling up
-      else if (lastScrollY - currentScrollY > 25) {
+
+      if (currentScrollY > lastScrollY && currentScrollY > 100) {
+        // scrolling down
+        setShowTopHeader(false);
+      } else {
+        // scrolling up
         setShowTopHeader(true);
       }
 
       lastScrollY = currentScrollY;
+      ticking = false;
     };
 
-    window.addEventListener('scroll', controlHeader);
-    return () => window.removeEventListener('scroll', controlHeader);
+    const handleScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(controlHeader);
+        ticking = true;
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
   return (

@@ -9,10 +9,6 @@ function App() {
       <main>
         <Outlet />
       </main>
-
-      {/* <footer>
-        <p>© 2025 My React Vite App</p>
-      </footer> */}
       <Footer />
     </div>
   );

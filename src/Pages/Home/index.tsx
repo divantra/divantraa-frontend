@@ -1,8 +1,8 @@
-import HeroSection from './AdvSection';
-import AboutSection from './AboutSection';
-import ProductsSection from './ProductsSection';
-import TestimonialsSection from './TestimonialsSection';
-import NewsletterSection from './NewsletterSection';
+import HeroSection from '../../components/Home/AdvSection';
+import AboutSection from '../../components/Home/AboutSection';
+import ProductsSection from '../../components/Home/ProductsSection';
+import TestimonialsSection from '../../components/Home/TestimonialsSection';
+import NewsletterSection from '../../components/Home/NewsletterSection';
 import './Home.css';
 
 const Home = () => {

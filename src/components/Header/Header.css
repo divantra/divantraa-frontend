@@ -16,7 +16,7 @@ body {
   position: sticky;
   top: 0;
   z-index: 1000;
-  font-family: serif;
+  font-family: Figtree, sans-serif;
 }
 
 /* --- Top Header --- */
@@ -43,6 +43,10 @@ body {
   font-size: 1.6rem;
   font-weight: bold;
   color: #0c5b47;
+  font-family: 'Dancing Script', cursive;
+  background: linear-gradient(90deg, #0f7106, #0c5b47);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .nav-links {
