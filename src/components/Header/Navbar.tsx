@@ -3,15 +3,18 @@ import './Header.css';
 import { CiSearch } from 'react-icons/ci';
 import { RiContactsFill } from 'react-icons/ri';
 import { FaShoppingCart } from 'react-icons/fa';
+import { Link, useLocation } from 'react-router-dom';
 
 const Navbar: React.FC = () => {
   const [menuOpen, setMenuOpen] = useState(false);
+  const location = useLocation();
 
   return (
     <nav className="navbar">
-      <a href="/" className="logo">
-        Divantraa Shop
-      </a>
+      {/* Logo */}
+      <Link to="/" className="logo">
+        <img src="/images/logo.png" alt="Divantraa Logo" />
+      </Link>
 
       {/* Hamburger icon for mobile */}
       <div className="menu-icon" onClick={() => setMenuOpen(!menuOpen)} aria-label="Toggle Menu">
@@ -21,33 +24,46 @@ const Navbar: React.FC = () => {
       {/* Nav Links */}
       <ul className={`nav-links ${menuOpen ? 'active' : ''}`}>
         <li>
-          <a href="products">All Products</a>
+          <Link
+            to="/products"
+            className={location.pathname.startsWith('/products') ? 'active' : ''}
+          >
+            All Products
+          </Link>
         </li>
         <li>
-          <a href="#">Newly Launched</a>
+          <Link
+            to="/newly-launched"
+            className={location.pathname === '/newly-launched' ? 'active' : ''}
+          >
+            Newly Launched
+          </Link>
         </li>
         <li>
-          <a href="#">Oils</a>
+          <Link to="/oils" className={location.pathname === '/oils' ? 'active' : ''}>
+            Oils
+          </Link>
         </li>
         <li>
-          <a href="#">Healthy Combo</a>
+          <Link
+            to="/healthy-combo"
+            className={location.pathname === '/healthy-combo' ? 'active' : ''}
+          >
+            Healthy Combo
+          </Link>
         </li>
         <li>
-          <a href="contact">Contact Us</a>
+          <Link to="/contact" className={location.pathname === '/contact' ? 'active' : ''}>
+            Contact Us
+          </Link>
         </li>
       </ul>
 
       {/* Icons */}
       <div className="nav-icons">
-        <span role="img" aria-label="search">
-          <CiSearch />
-        </span>
-        <span role="img" aria-label="user">
-          <RiContactsFill />
-        </span>
-        <span role="img" aria-label="cart">
-          <FaShoppingCart />
-        </span>
+        <CiSearch />
+        <RiContactsFill />
+        <FaShoppingCart />
       </div>
     </nav>
   );
