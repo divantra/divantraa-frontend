@@ -21,12 +21,47 @@ body {
 
 /* --- Top Header --- */
 .top-header {
+  width: 100%;
   background-color: #0c5b47;
-  color: #fff;
+  color: white;
+  overflow: hidden;
+  position: relative;
+  padding: 0px 0;
   text-align: center;
-  font-size: 0.9rem;
-  padding: 1px 0;
-  transition: transform 0.3s ease;
+}
+
+/* Container ensures smooth centering */
+.marquee-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+}
+
+/* Actual moving text */
+.marquee-text {
+  display: inline-block;
+  white-space: nowrap;
+  animation: marqueeMove 8s ease-in-out infinite;
+}
+
+/* Keyframes for left → center → right with pause */
+@keyframes marqueeMove {
+  0% {
+    transform: translateX(-100%);
+  }
+  35% {
+    transform: translateX(0%);
+  }
+  50% {
+    transform: translateX(0%);
+  }
+  85% {
+    transform: translateX(100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
 }
 
 /* --- Navbar --- */
@@ -35,20 +70,28 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-around;
-  padding: 6px 60px;
+  padding: 1px 60px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .logo {
-  font-size: 1.6rem;
-  font-weight: bold;
-  color: #0c5b47;
-  font-family: 'Dancing Script', cursive;
-  background: linear-gradient(90deg, #0f7106, #0c5b47);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  display: flex;
+  align-items: center;
+  height: 100%;
+  margin: 0;
+  padding: 0;
 }
 
+.logo img {
+  height: 45px; /* makes it smaller */
+  width: auto; /* keeps proportions */
+  object-fit: contain; /* ensures it fits neatly */
+  border-radius: 50px;
+  mix-blend-mode: multiply; /* or try 'darken' / 'screen' depending on header color */
+  background: transparent;
+}
+
+/* Navigation Links */
 .nav-links {
   list-style: none;
   display: flex;
@@ -56,9 +99,40 @@ body {
 }
 
 .nav-links li a {
+  position: relative;
   text-decoration: none;
-  color: #333;
-  font-weight: 500;
+  color: #777;
+  font-weight: 600;
+  transition: color 0.3s ease;
+}
+
+/* Animated underline */
+.nav-links li a::after {
+  content: '';
+  position: absolute;
+  width: 0;
+  height: 2px;
+  left: 0;
+  bottom: -4px;
+  background-color: #0c5b47;
+  transition: width 0.3s ease;
+}
+
+.nav-links li a:hover {
+  color: #0c5b47;
+}
+
+.nav-links li a:hover::after {
+  width: 100%;
+}
+
+.nav-links li a.active {
+  color: #0c5b47;
+  font-weight: 600;
+}
+
+.nav-links li a.active::after {
+  width: 100%;
 }
 
 .nav-icons {

@@ -23,7 +23,7 @@ body {
   justify-content: center;
   text-align: center;
   position: relative;
-
+  overflow: hidden;
   animation: moveBackground 20s ease-in-out infinite alternate;
 }
 
