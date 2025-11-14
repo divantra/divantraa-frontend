@@ -22,13 +22,26 @@ body {
 /* --- Top Header --- */
 .top-header {
   width: 100%;
-  background-color: #0c5b47;
+  background-color: #00584b;
   color: white;
   overflow: hidden;
   position: relative;
   padding: 0px 0;
   text-align: center;
+  font-family: 'Roboto Slab', serif;
+  letter-spacing: 0.1rem;
+  font-size: 15px;
+  font-weight: bold;
+  /* text-decoration: underline; */
+  cursor: pointer;
 }
+/* 
+.roboto-slab-<uniquifier> {
+  font-family: "Roboto Slab", serif;
+  font-optical-sizing: auto;
+  font-weight: <weight>;
+  font-style: normal;
+} */
 
 /* Container ensures smooth centering */
 .marquee-container {
@@ -69,7 +82,7 @@ body {
   background-color: #fff;
   display: flex;
   align-items: center;
-  justify-content: space-around;
+  justify-content: space-between;
   padding: 1px 60px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
@@ -101,9 +114,14 @@ body {
 .nav-links li a {
   position: relative;
   text-decoration: none;
-  color: #777;
-  font-weight: 600;
+  color: #555353;
+  font-weight: 400;
+  font-size: 1.1rem;
   transition: color 0.3s ease;
+  font-family: 'Figtree', sans-serif;
+  letter-spacing: 0.06rem;
+  border: none;
+  font-style: normal;
 }
 
 /* Animated underline */

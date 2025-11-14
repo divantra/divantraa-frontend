@@ -13,7 +13,7 @@ const AdvSection: React.FC = () => {
     <section className="hero">
       <div className="hero-content">
         <h1>Welcome to Divantraa</h1>
-        <p>Pure. Sustainable. Handcrafted skincare from nature’s essence.</p>
+        <p>Pure. Sustainable. Handcrafted oil from nature’s essence.</p>
         <button className="btn-primary" onClick={handleShopNow}>
           Shop Now
         </button>

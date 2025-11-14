@@ -1,5 +1,5 @@
 .divantra-footer {
-  background-color: #0a3d2e;
+  background-color: #00584b;
   background-image: url('/public/images/divantraa-footer-background-image.webp');
   color: #ffffff;
   font-family: 'Poppins', sans-serif;
@@ -102,7 +102,7 @@
 
 .newsletters-input button {
   background-color: #d4af37;
-  color: #0a3d2e;
+  color: #00584b;
   font-weight: 600;
   border: none;
   padding: 0.6rem 1.2rem;
