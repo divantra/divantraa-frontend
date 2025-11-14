@@ -9,24 +9,28 @@ const Navbar: React.FC = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const location = useLocation();
 
+  // Close menu when changing pages
+  const handleNavClick = () => setMenuOpen(false);
+
   return (
     <nav className="navbar">
       {/* Logo */}
-      <Link to="/" className="logo">
+      <Link to="/" className="logo" onClick={handleNavClick}>
         <img src="/images/logo2.png" alt="Divantraa Logo" />
       </Link>
 
-      {/* Hamburger icon for mobile */}
+      {/* Hamburger / Close icon */}
       <div className="menu-icon" onClick={() => setMenuOpen(!menuOpen)} aria-label="Toggle Menu">
-        {menuOpen ? '✖️' : '☰'}
+        {menuOpen ? '✖' : '☰'}
       </div>
 
-      {/* Nav Links */}
+      {/* Navigation Links */}
       <ul className={`nav-links ${menuOpen ? 'active' : ''}`}>
         <li>
           <Link
             to="/products"
             className={location.pathname.startsWith('/products') ? 'active' : ''}
+            onClick={handleNavClick}
           >
             All Products
           </Link>
@@ -35,12 +39,17 @@ const Navbar: React.FC = () => {
           <Link
             to="/newly-launched"
             className={location.pathname === '/newly-launched' ? 'active' : ''}
+            onClick={handleNavClick}
           >
             Newly Launched
           </Link>
         </li>
         <li>
-          <Link to="/oils" className={location.pathname === '/oils' ? 'active' : ''}>
+          <Link
+            to="/oils"
+            className={location.pathname === '/oils' ? 'active' : ''}
+            onClick={handleNavClick}
+          >
             Oils
           </Link>
         </li>
@@ -48,17 +57,26 @@ const Navbar: React.FC = () => {
           <Link
             to="/wood-pressed-section"
             className={location.pathname === '/wood-pressed-section' ? 'active' : ''}
+            onClick={handleNavClick}
           >
             Wood Pressed Oils
           </Link>
         </li>
         <li>
-          <Link to="/about" className={location.pathname === '/about' ? 'active' : ''}>
+          <Link
+            to="/about"
+            className={location.pathname === '/about' ? 'active' : ''}
+            onClick={handleNavClick}
+          >
             About Us
           </Link>
         </li>
         <li>
-          <Link to="/contact" className={location.pathname === '/contact' ? 'active' : ''}>
+          <Link
+            to="/contact"
+            className={location.pathname === '/contact' ? 'active' : ''}
+            onClick={handleNavClick}
+          >
             Contact Us
           </Link>
         </li>
