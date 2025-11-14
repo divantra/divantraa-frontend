@@ -12,11 +12,13 @@ body {
   box-sizing: inherit;
 }
 
-/* --- Hero Section --- */
+/* --- Hero Section (Slideshow Enabled) --- */
 .hero {
   height: 50vh;
   width: 100%;
-  background: url('/images/divantraa-default-page-background.jpg') center center / cover no-repeat;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
   color: white;
   display: flex;
   align-items: center;
@@ -24,10 +26,12 @@ body {
   text-align: center;
   position: relative;
   overflow: hidden;
-  animation: moveBackground 20s ease-in-out infinite alternate;
+
+  /* smooth fade transition */
+  transition: background-image 1s ease-in-out;
 }
 
-/* Optional: Dark overlay for readability */
+/* Dark overlay */
 .hero::before {
   content: '';
   position: absolute;
@@ -35,14 +39,14 @@ body {
   left: 0;
   height: 100%;
   width: 100%;
-  background: rgba(0, 0, 0, 0.4); /* adjust transparency */
+  background: rgba(0, 0, 0, 0.4);
   z-index: 1;
 }
 
-/* --- Hero Content --- */
+/* Hero Content */
 .hero-content {
   position: relative;
-  z-index: 2; /* ensures text appears above overlay */
+  z-index: 2;
   max-width: 800px;
   padding: 0 1rem;
 }
@@ -59,7 +63,7 @@ body {
   opacity: 0.9;
 }
 
-/* --- Button Styling --- */
+/* Button */
 .btn-primary {
   background-color: #0c5b47;
   color: #fff;
@@ -76,7 +80,7 @@ body {
   transform: scale(1.05);
 }
 
-/* --- Responsive --- */
+/* Responsive */
 @media (max-width: 768px) {
   .hero-content h1 {
     font-size: 2rem;
