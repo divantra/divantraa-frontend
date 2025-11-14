@@ -18,6 +18,7 @@ export const router = createBrowserRouter([
       { path: '/about', element: <About /> },
       { path: '/wood-pressed-section', element: <WoodPressedSection /> },
       { path: '/newly-launched', element: <NewLaunchedSection /> },
+      { path: '/oils', element: <AllProducts /> },
     ],
   },
 ]);
