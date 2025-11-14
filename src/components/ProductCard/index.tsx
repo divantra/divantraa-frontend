@@ -23,7 +23,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
   isBestSeller,
 }) => {
   return (
-    <div className="product-card">
+    <div className="product-card wow-card">
       {/* Badges */}
       <div className="product-badges">
         {isBestSeller && <span className="badge best-seller">⭐ Best Seller</span>}
@@ -32,7 +32,9 @@ const ProductCard: React.FC<ProductCardProps> = ({
       </div>
 
       {/* Product Image */}
-      <img src={image} alt={title} className="product-image" />
+      <div className="product-image-wrapper">
+        <img src={image} alt={title} className="product-image" />
+      </div>
 
       {/* Product Content */}
       <div className="product-content">
@@ -41,7 +43,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
         <div className="product-pricing">
           <p className="product-price">₹{price}</p>
-          {offerPrice && <p className="product-offer">Best Price ₹{offerPrice} with coupon</p>}
+          {offerPrice && <p className="product-offer">Best Price ₹{offerPrice}</p>}
         </div>
 
         <div className="product-actions">

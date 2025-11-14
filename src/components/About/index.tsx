@@ -28,7 +28,7 @@ const AboutUs: React.FC = () => {
         </div>
 
         <div className="about-image">
-          <img src="/images/Home-Slides/slide1.jpg" alt="About Divantraa" />
+          <img src="/public/images/logo-icon.png" alt="About Divantraa" />
         </div>
       </section>
 

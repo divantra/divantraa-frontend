@@ -22,7 +22,7 @@ body {
 /* --- Top Header --- */
 .top-header {
   width: 100%;
-  background-color: #00584b;
+  background-color: #0c5b47;
   color: white;
   overflow: hidden;
   position: relative;
@@ -30,10 +30,9 @@ body {
   text-align: center;
   font-family: 'Roboto Slab', serif;
   letter-spacing: 0.1rem;
-  font-size: 15px;
+  font-size: 18px;
   font-weight: bold;
-  /* text-decoration: underline; */
-  cursor: pointer;
+  text-decoration: underline;
 }
 /* 
 .roboto-slab-<uniquifier> {
@@ -82,7 +81,7 @@ body {
   background-color: #fff;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: space-around;
   padding: 1px 60px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
@@ -119,7 +118,7 @@ body {
   font-size: 1.1rem;
   transition: color 0.3s ease;
   font-family: 'Figtree', sans-serif;
-  letter-spacing: 0.06rem;
+  letter-spacing: 0.1rem;
   border: none;
   font-style: normal;
 }
