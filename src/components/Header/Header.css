@@ -1,4 +1,6 @@
-/* --- General --- */
+/* -----------------------------------
+   General Reset
+----------------------------------- */
 html,
 body {
   margin: 0;
@@ -6,7 +8,6 @@ body {
   box-sizing: border-box;
 }
 
-/* Optional: make sure everything inherits box-sizing */
 *,
 *::before,
 *::after {
@@ -18,46 +19,35 @@ body {
   z-index: 1000;
   font-family: Figtree, sans-serif;
 }
-
-/* --- Top Header --- */
+/* -----------------------------------
+   Announcement Bar (Top Header)
+----------------------------------- */
 .top-header {
   width: 100%;
   background-color: #0c5b47;
   color: white;
   overflow: hidden;
-  position: relative;
-  padding: 0px 0;
   text-align: center;
+  padding: 1px 0;
   font-family: 'Roboto Slab', serif;
-  letter-spacing: 0.1rem;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: bold;
-  text-decoration: underline;
+  letter-spacing: 0.5px;
 }
-/* 
-.roboto-slab-<uniquifier> {
-  font-family: "Roboto Slab", serif;
-  font-optical-sizing: auto;
-  font-weight: <weight>;
-  font-style: normal;
-} */
 
-/* Container ensures smooth centering */
+/* Moving text effect */
 .marquee-container {
   display: flex;
   justify-content: center;
   align-items: center;
-  width: 100%;
 }
 
-/* Actual moving text */
 .marquee-text {
   display: inline-block;
   white-space: nowrap;
   animation: marqueeMove 8s ease-in-out infinite;
 }
 
-/* Keyframes for left → center → right with pause */
 @keyframes marqueeMove {
   0% {
     transform: translateX(-100%);
@@ -76,58 +66,54 @@ body {
   }
 }
 
-/* --- Navbar --- */
+/* -----------------------------------
+   Navbar
+----------------------------------- */
 .navbar {
-  background-color: #fff;
+  background: #ffffff;
   display: flex;
   align-items: center;
-  justify-content: space-around;
-  padding: 1px 60px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  justify-content: space-between;
+  padding: 1px 40px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
 }
 
-.logo {
-  display: flex;
-  align-items: center;
-  height: 100%;
-  margin: 0;
-  padding: 0;
-}
-
+/* Logo */
 .logo img {
-  height: 45px; /* makes it smaller */
-  width: auto; /* keeps proportions */
-  object-fit: contain; /* ensures it fits neatly */
+  height: 45px;
+  width: auto;
+  object-fit: contain;
   border-radius: 50px;
-  mix-blend-mode: multiply; /* or try 'darken' / 'screen' depending on header color */
-  background: transparent;
+  mix-blend-mode: multiply;
 }
 
-/* Navigation Links */
+/* -----------------------------------
+   Navigation Links (Desktop)
+----------------------------------- */
 .nav-links {
   list-style: none;
   display: flex;
-  gap: 20px;
+  gap: 24px;
 }
 
 .nav-links li a {
-  position: relative;
   text-decoration: none;
-  color: #555353;
-  font-weight: 400;
-  font-size: 1.1rem;
-  transition: color 0.3s ease;
   font-family: 'Figtree', sans-serif;
-  letter-spacing: 0.1rem;
-  border: none;
-  font-style: normal;
+  color: #555;
+  font-size: 1.1rem;
+  letter-spacing: 0.5px;
+  position: relative;
+  transition: color 0.3s ease;
 }
 
-/* Animated underline */
+/* Underline animation */
 .nav-links li a::after {
   content: '';
   position: absolute;
-  width: 0;
+  width: 0%;
   height: 2px;
   left: 0;
   bottom: -4px;
@@ -143,6 +129,7 @@ body {
   width: 100%;
 }
 
+/* Active Link */
 .nav-links li a.active {
   color: #0c5b47;
   font-weight: 600;
@@ -152,63 +139,92 @@ body {
   width: 100%;
 }
 
+/* Icons (Desktop) */
 .nav-icons {
   display: flex;
-  gap: 15px;
-  font-size: 1.2rem;
-  color: #0c5b47;
-}
-.nav-icons span {
+  gap: 20px;
   font-size: 1.3rem;
-  margin-left: 15px;
-  cursor: pointer;
-  transition:
-    transform 0.2s ease,
-    color 0.2s ease;
+  color: #0c5b47;
 }
 
-.nav-icons span:hover {
-  color: #0c5b47;
+.nav-icons svg {
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.nav-icons svg:hover {
   transform: scale(1.2);
 }
+
+/* -----------------------------------
+   Mobile Menu Icon
+----------------------------------- */
 .menu-icon {
   display: none;
+  font-size: 32px;
+  cursor: pointer;
+  color: #0c5b47;
+  z-index: 2001;
 }
-/* --- Responsive --- */
+
+/* -----------------------------------
+   Mobile Navigation
+----------------------------------- */
 @media (max-width: 768px) {
+  .navbar {
+    padding: 12px 20px;
+  }
+
   .menu-icon {
     display: block;
   }
 
-  /* Hide links by default */
+  /* Hide desktop links */
   .nav-links {
     position: absolute;
-    top: 60px;
-    left: 0;
+    top: 65px;
+    right: 0;
     width: 100%;
+    background: #ffffff;
     flex-direction: column;
-    background-color: #fff;
-    display: none;
     padding: 15px 0;
-    border-top: 1px solid #ddd;
+    text-align: center;
+    display: none;
+    border-top: 1px solid #eee;
+    animation: slideDown 0.3s ease forwards;
   }
 
-  /* Show when active */
+  /* Show when opened */
   .nav-links.active {
     display: flex;
   }
 
+  /* Mobile Link Style */
   .nav-links li {
-    text-align: center;
-    padding: 10px 0;
+    width: 100%;
   }
 
   .nav-links li a {
+    padding: 12px 0;
+    display: block;
+    width: 100%;
     font-size: 1rem;
     color: #0c5b47;
   }
 
+  /* Hide icons on mobile */
   .nav-icons {
-    display: none; /* hide icons in menu mode (optional) */
+    display: none;
+  }
+
+  @keyframes slideDown {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 }
