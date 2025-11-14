@@ -1,20 +1,23 @@
 import React, { useState, useMemo } from 'react';
-import ProductCard from '../../ProductCard';
 import './ProductsSection.css';
-import { products } from '../../../utils/productData';
+import ProductCard from '../ProductCard';
+import { products } from '../../utils/productData';
 
-const ProductsSection: React.FC = () => {
+const WoodPressed: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
 
-  // 🔍 Filter products by title
+  // 🔍 Filter products by title + category 'wood'
   const filteredProducts = useMemo(() => {
-    return products.filter((p) => p.title.toLowerCase().includes(searchTerm.toLowerCase()));
+    return products
+      .filter((p) => p.title.toLowerCase().includes('wood')) // only wood pressed oils
+      .filter((p) => p.title.toLowerCase().includes(searchTerm.toLowerCase())); // search
   }, [searchTerm]);
 
   return (
     <section className="products-section">
       <div className="products-header">
-        <h2>Our Products</h2>
+        <h2>Our Wood Pressed Oils</h2>
+
         <input
           type="text"
           className="search-bar"
@@ -35,4 +38,4 @@ const ProductsSection: React.FC = () => {
   );
 };
 
-export default ProductsSection;
+export default WoodPressed;

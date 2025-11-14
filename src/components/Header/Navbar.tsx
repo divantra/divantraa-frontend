@@ -46,10 +46,15 @@ const Navbar: React.FC = () => {
         </li>
         <li>
           <Link
-            to="/healthy-combo"
-            className={location.pathname === '/healthy-combo' ? 'active' : ''}
+            to="/wood-pressed-section"
+            className={location.pathname === '/wood-pressed-section' ? 'active' : ''}
           >
-            Healthy Combo
+            Wood Pressed Oils
+          </Link>
+        </li>
+        <li>
+          <Link to="/about" className={location.pathname === '/about' ? 'active' : ''}>
+            About Us
           </Link>
         </li>
         <li>
