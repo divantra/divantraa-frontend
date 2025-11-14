@@ -1,20 +1,23 @@
 import React, { useState, useMemo } from 'react';
-import ProductCard from '../../ProductCard';
-import './ProductsSection.css';
-import { products } from '../../../utils/productData';
+import './NewLaunched.css';
+import ProductCard from '../ProductCard';
+import { products } from '../../utils/productData';
 
-const ProductsSection: React.FC = () => {
+const NewLaunched: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
 
-  // 🔍 Filter products by title
+  // 🔍 Filter only "New Launch" products
   const filteredProducts = useMemo(() => {
-    return products.filter((p) => p.title.toLowerCase().includes(searchTerm.toLowerCase()));
-  }, [searchTerm]);
+    return products
+      .filter((p) => p.tag == 'New Launch') // correct tag matching
+      .filter((p) => p.title.toLowerCase().includes(searchTerm.toLowerCase())); // search filter
+  }, [searchTerm, products]);
 
   return (
     <section className="products-section">
       <div className="products-header">
-        <h2>Our Products</h2>
+        <h2>New Launched Products</h2>
+
         <input
           type="text"
           className="search-bar"
@@ -35,4 +38,4 @@ const ProductsSection: React.FC = () => {
   );
 };
 
-export default ProductsSection;
+export default NewLaunched;
