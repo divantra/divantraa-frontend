@@ -6,6 +6,11 @@ import App from './App';
 import About from './Pages/About';
 import WoodPressedSection from './Pages/WoodPressedSection';
 import NewLaunchedSection from './Pages/NewLaunchedSection';
+import Login from './Pages/Auth/Login';
+import Register from './Pages/Auth/Register';
+import ForgotPassword from './Pages/Auth/Forgot-Password';
+import ProtectedRoute from './ProtectedRoute';
+import PublicRoute from './PublicRoute';
 
 export const router = createBrowserRouter([
   {
@@ -19,6 +24,26 @@ export const router = createBrowserRouter([
       { path: '/wood-pressed-section', element: <WoodPressedSection /> },
       { path: '/newly-launched', element: <NewLaunchedSection /> },
       { path: '/oils', element: <AllProducts /> },
+
+      // --- Public/Guest Only Routes ---
+      {
+        element: <PublicRoute />,
+        children: [
+          { path: '/login', element: <Login /> },
+          { path: '/register', element: <Register /> },
+          { path: '/forgot-password', element: <ForgotPassword /> },
+        ],
+      },
+    ],
+  },
+  // --- Protected Routes ---
+  {
+    element: <ProtectedRoute />, // All children here are protected
+    children: [
+      {
+        path: "/dashboard",
+        element: <AllProducts />,
+      },
     ],
   },
 ]);

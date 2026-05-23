@@ -74,7 +74,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1px 40px;
+  padding: 10px 40px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
   position: sticky;
   top: 0;
@@ -177,6 +177,16 @@ body {
 
   .menu-icon {
     display: block;
+    order: 3;
+    margin-left: 10px;
+  }
+
+  /* Make icons visible and friendly on mobile */
+  .nav-icons {
+    display: flex;
+    gap: 15px;
+    font-size: 1.2rem;
+    order: 2;
   }
 
   /* Hide desktop links */
@@ -210,11 +220,6 @@ body {
     width: 100%;
     font-size: 1rem;
     color: #0c5b47;
-  }
-
-  /* Hide icons on mobile */
-  .nav-icons {
-    display: none;
   }
 
   @keyframes slideDown {
