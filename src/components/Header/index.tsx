@@ -1,10 +1,18 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import TopHeader from './TopHeader';
 import Navbar from './Navbar';
 import './Header.css';
 
 const Header: React.FC = () => {
   const [showTopHeader, setShowTopHeader] = useState(true);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const location = useLocation();
+
+  useEffect(() => {
+    const token = localStorage.getItem('accessToken');
+    setIsLoggedIn(!!token);
+  }, [location]);
 
   useEffect(() => {
     let lastScrollY = window.scrollY;
@@ -42,10 +50,20 @@ const Header: React.FC = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  const handleLogout = () => {
+    localStorage.removeItem('accessToken');
+
+    // Optional: remove user data
+    localStorage.removeItem('user');
+
+    // Redirect to login page
+    window.location.href = '/login';
+  };
+
   return (
     <header className="header">
       {showTopHeader && <TopHeader />}
-      <Navbar />
+      <Navbar isLoggedIn={isLoggedIn} onLogout={handleLogout} />
     </header>
   );
 };

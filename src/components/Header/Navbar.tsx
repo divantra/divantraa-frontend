@@ -3,14 +3,61 @@ import './Header.css';
 import { CiSearch } from 'react-icons/ci';
 import { RiContactsFill } from 'react-icons/ri';
 import { FaShoppingCart } from 'react-icons/fa';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, NavLink } from 'react-router-dom';
+import { Dropdown, type MenuProps, Drawer, Grid } from 'antd';
+import { MenuOutlined } from '@ant-design/icons';
 
-const Navbar: React.FC = () => {
+const { useBreakpoint } = Grid;
+
+interface NavbarProps {
+  isLoggedIn: boolean;
+  onLogout: () => void;
+}
+
+const Navbar: React.FC<NavbarProps> = ({ isLoggedIn, onLogout }) => {
   const [menuOpen, setMenuOpen] = useState(false);
-  const location = useLocation();
+  const screens = useBreakpoint();
 
   // Close menu when changing pages
-  const handleNavClick = () => setMenuOpen(false);
+  const handleNavClick = () => {
+    setMenuOpen(false);
+  };
+
+  const userMenuItems: MenuProps['items'] = [
+    {
+      key: 'user-action',
+      label: isLoggedIn ? (
+        <div onClick={() => { onLogout(); handleNavClick(); }}>Logout</div>
+      ) : (
+        <Link to="/login" onClick={handleNavClick}>Login / Register</Link>
+      ),
+    },
+  ];
+
+  const navItems = [
+    { label: 'All Products', path: '/products' },
+    { label: 'Newly Launched', path: '/newly-launched' },
+    { label: 'Oils', path: '/oils' },
+    { label: 'Wood Pressed Oils', path: '/wood-pressed-section' },
+    { label: 'About Us', path: '/about' },
+    { label: 'Contact Us', path: '/contact' },
+  ];
+
+  const NavLinks = () => (
+    <>
+      {navItems.map((item) => (
+        <li key={item.path}>
+          <NavLink 
+            to={item.path} 
+            className={({ isActive }) => (isActive ? 'active' : '')}
+            onClick={handleNavClick}
+          >
+            {item.label}
+          </NavLink>
+        </li>
+      ))}
+    </>
+  );
 
   return (
     <nav className="navbar">
@@ -20,72 +67,41 @@ const Navbar: React.FC = () => {
       </Link>
 
       {/* Hamburger / Close icon */}
-      <div className="menu-icon" onClick={() => setMenuOpen(!menuOpen)} aria-label="Toggle Menu">
-        {menuOpen ? '✖' : '☰'}
-      </div>
+      {!screens.md && (
+        <div className="menu-icon" onClick={() => setMenuOpen(true)}>
+          <MenuOutlined />
+        </div>
+      )}
 
       {/* Navigation Links */}
-      <ul className={`nav-links ${menuOpen ? 'active' : ''}`}>
-        <li>
-          <Link
-            to="/products"
-            className={location.pathname.startsWith('/products') ? 'active' : ''}
-            onClick={handleNavClick}
-          >
-            All Products
-          </Link>
-        </li>
-        <li>
-          <Link
-            to="/newly-launched"
-            className={location.pathname === '/newly-launched' ? 'active' : ''}
-            onClick={handleNavClick}
-          >
-            Newly Launched
-          </Link>
-        </li>
-        <li>
-          <Link
-            to="/oils"
-            className={location.pathname === '/oils' ? 'active' : ''}
-            onClick={handleNavClick}
-          >
-            Oils
-          </Link>
-        </li>
-        <li>
-          <Link
-            to="/wood-pressed-section"
-            className={location.pathname === '/wood-pressed-section' ? 'active' : ''}
-            onClick={handleNavClick}
-          >
-            Wood Pressed Oils
-          </Link>
-        </li>
-        <li>
-          <Link
-            to="/about"
-            className={location.pathname === '/about' ? 'active' : ''}
-            onClick={handleNavClick}
-          >
-            About Us
-          </Link>
-        </li>
-        <li>
-          <Link
-            to="/contact"
-            className={location.pathname === '/contact' ? 'active' : ''}
-            onClick={handleNavClick}
-          >
-            Contact Us
-          </Link>
-        </li>
-      </ul>
+      {screens.md && (
+        <ul className="nav-links">
+          <NavLinks />
+        </ul>
+      )}
+
+      <Drawer
+        title={<img src="/images/logo2.png" alt="Logo" height={30} />}
+        placement="right"
+        onClose={() => setMenuOpen(false)}
+        open={menuOpen}
+        width={280}
+      >
+        <ul className="nav-links active" style={{ position: 'static', border: 'none' }}>
+          <NavLinks />
+        </ul>
+      </Drawer>
 
       {/* Icons */}
       <div className="nav-icons">
         <CiSearch />
-        <RiContactsFill />
+        <Dropdown 
+          menu={{ items: userMenuItems }} 
+          placement="bottomRight" 
+          arrow={{ pointAtCenter: true }}
+        >
+          <RiContactsFill className="nav-icon-user-trigger" style={{ cursor: 'pointer' }} />
+        </Dropdown>
         <FaShoppingCart />
       </div>
     </nav>

@@ -80,9 +80,9 @@ const Footer: React.FC = () => {
       <div className="footer-bottom">
         <p>© {new Date().getFullYear()} Divantraa Wellness Pvt. Ltd. | All Rights Reserved</p>
       </div>
-      <span className="developer-credit">
+      {/* <span className="developer-credit">
         Developed & Designed by <strong>Sumeet Golasangi</strong>
-      </span>
+      </span> */}
     </footer>
   );
 };
