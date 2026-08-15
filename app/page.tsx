@@ -9,7 +9,6 @@ import { CategoryGrid } from "@/components/home/CategoryGrid";
 export default function HomePage() {
   return (
     <>
-      <SiteHeader />
       <CartDrawer />
 
       <main>

@@ -30,7 +30,6 @@ export default function ProductsPage() {
 
   return (
     <>
-      <SiteHeader />
       <CartDrawer />
 
       <main className="max-w-7xl mx-auto px-6 py-10 min-h-[60vh]">

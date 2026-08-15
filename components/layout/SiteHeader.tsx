@@ -32,8 +32,8 @@ export function SiteHeader() {
             <Link href="/products?category=cold-pressed-oils" className="hover:text-forest">Newly Launched</Link>
             <Link href="/products" className="hover:text-forest">Oils</Link>
             <Link href="/products" className="hover:text-forest">Wood Pressed Oils</Link>
-            <Link href="/products" className="hover:text-forest">About Us</Link>
-            <Link href="/products" className="hover:text-forest">Contact Us</Link>
+            <Link href="/about" className="hover:text-forest">About Us</Link>
+            <Link href="/contact" className="hover:text-forest">Contact Us</Link>
           </nav>
 
         <div className="flex items-center gap-5">

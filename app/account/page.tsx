@@ -40,7 +40,6 @@ export default function AccountPage() {
 
   return (
     <>
-      <SiteHeader />
       <CartDrawer />
 
       <main className="min-h-[70vh] bg-cream px-6 py-10 sm:py-16">
