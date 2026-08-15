@@ -3,6 +3,7 @@ import { Providers } from "@/lib/providers";
 import { PromoBar } from "@/components/layout/PromoBar";
 import { LoginModal } from "@/components/auth/LoginModal";
 import "./globals.css";
+import { SiteHeader } from "@/components/layout/SiteHeader";
 
 export const metadata: Metadata = {
   title: "Divantraa — Farm to Home",
@@ -15,6 +16,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <Providers>
           <PromoBar />
+          <SiteHeader />
           {children}
           <LoginModal />
         </Providers>

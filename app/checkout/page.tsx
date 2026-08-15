@@ -94,7 +94,6 @@ export default function CheckoutPage() {
   return (
     <>
       <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
-      <SiteHeader />
 
       <main className="max-w-5xl mx-auto px-6 py-12 grid md:grid-cols-[1.3fr_1fr] gap-12">
         <div>

@@ -25,7 +25,6 @@ export default function ProductDetailsPage() {
   if (isLoading || !data) {
     return (
       <>
-        <SiteHeader />
         <main className="max-w-7xl mx-auto px-6 py-20 text-ink/40">Loading product…</main>
       </>
     );
@@ -45,7 +44,6 @@ export default function ProductDetailsPage() {
 
   return (
     <>
-      <SiteHeader />
       <CartDrawer />
 
       <main className="max-w-7xl mx-auto px-6 py-10 grid md:grid-cols-2 gap-12">
