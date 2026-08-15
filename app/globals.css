@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-display: 'Fraunces', serif;
+  --font-body: 'Inter', sans-serif;
+}
+
+body {
+  @apply bg-white text-ink antialiased;
+}
+
+::selection {
+  background-color: #D3A24A;
+  color: white;
+}
