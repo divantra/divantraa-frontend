@@ -2,7 +2,10 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Facebook, Instagram, Twitter, MessageCircle, ShieldCheck } from "lucide-react";
+import { Facebook, Instagram, Twitter, MessageCircle } from "lucide-react";
+import React from "react";
+import Image from "next/image";
+import { CartFooterBar } from "../cart/CartFooterBar";
 
 const certifications = ["ISO 9001:2015", "ISO 22000:2018", "FSSAI", "FDA", "GMP", "HACCP", "IAF"];
 
@@ -49,12 +52,26 @@ export function SiteFooter() {
   }
 
   return (
-    <footer className="relative bg-forest text-white overflow-hidden bg-cover pt-8"
+    <React.Fragment>
+      {/* Certification strip */}
+      <div className="relative z-10 width-full mx-auto">
+        <div className="bg-white rounded-md flex flex-wrap items-center justify-center py-5">
+          <Image 
+            src="/images/liecence-image.png"
+            alt="Licence"
+            width={800}   // set width
+            height={600}  // set height
+            className="object-contain rounded-md"
+          />
+        </div>
+
+      </div>
+      <footer className="relative bg-forest text-white overflow-hidden bg-cover pt-8"
       style={{
         backgroundImage: "url('/images/divantraa-footer-background-image-DbOeJ5S1.webp')",
       }}>
       {/* Certification strip */}
-      <div className="relative z-10 max-w-7xl mx-auto px-6 pt-10">
+      {/* <div className="relative z-10 max-w-7xl mx-auto px-6 pt-10">
         <div className="bg-white rounded-md px-6 py-4 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 w-fit mx-auto sm:mx-0">
           {certifications.map((cert) => (
             <div key={cert} className="flex items-center gap-1.5 text-forest">
@@ -63,7 +80,7 @@ export function SiteFooter() {
             </div>
           ))}
         </div>
-      </div>
+      </div> */}
 
       {/* Main footer content */}
       <div className="relative z-10 max-w-7xl mx-auto px-6 py-14 grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
@@ -156,5 +173,7 @@ export function SiteFooter() {
         © {new Date().getFullYear()} Divantraa. All rights reserved.
       </div>
     </footer>
+      <CartFooterBar />
+    </React.Fragment>
   );
 }

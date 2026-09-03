@@ -103,20 +103,20 @@ export function LoginModal() {
                 {/* Full background image */}
                 <div className="absolute inset-0">
                   <Image
-                    src="/images/1740116888717_popup_940x-250.jpg"
+                    src="/images/divantraa-logo-main.jpeg"
                     alt=""
                     fill
                     className="object-cover"
                     priority
                   />
-                  <div className="absolute inset-0 bg-black/40" />
+                  <div className="absolute inset-0 bg-black/30" />
                 </div>
 
                 {/* Form content */}
                 <div className="relative z-10 flex flex-col justify-end p-6 min-h-[550px]">
-                  <span className="absolute top-4 right-4 font-display text-lg text-white tracking-wide">
+                  {/* <span className="absolute top-4 right-4 font-display text-lg text-white tracking-wide">
                       Divantraa
-                  </span>
+                  </span> */}
                   
                   <div className="bg-white rounded-xl p-6 sm:p-8 shadow-lg">
                     {step === "phone" && (
