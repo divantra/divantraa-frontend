@@ -17,10 +17,12 @@ interface CartState {
   closeCart: () => void;
   addItem: (item: Omit<CartLine, "quantity">, quantity?: number) => void;
   updateQuantity: (productId: string, quantity: number) => void;
+  getItemQuantity: (productId: string) => number;
   removeItem: (productId: string) => void;
   clearCart: () => void;
   subtotal: () => number;
   itemCount: () => number;
+  totalPrice: () => number; 
 }
 
 /**
@@ -43,21 +45,25 @@ export const useCartStore = create<CartState>()(
               items: state.items.map((i) =>
                 i.productId === item.productId ? { ...i, quantity: i.quantity + quantity } : i
               ),
-              isOpen: true,
             };
           }
-          return { items: [...state.items, { ...item, quantity }], isOpen: true };
+          return { items: [...state.items, { ...item, quantity }] };
         }),
       updateQuantity: (productId, quantity) =>
         set((state) => ({
           items: state.items.map((i) => (i.productId === productId ? { ...i, quantity } : i)),
         })),
+      getItemQuantity: (productId) => {
+        const item = get().items.find((i) => i.productId === productId);
+        return item ? item.quantity : 0;
+      },
       removeItem: (productId) =>
         set((state) => ({ items: state.items.filter((i) => i.productId !== productId) })),
       clearCart: () => set({ items: [] }),
       subtotal: () => get().items.reduce((sum, i) => sum + i.price * i.quantity, 0),
       itemCount: () => get().items.reduce((sum, i) => sum + i.quantity, 0),
+      totalPrice: () => get().items.reduce((sum, i) => sum + i.price * i.quantity, 0),
     }),
-    { name: "anveshan-cart" }
+    { name: "divandraa-cart" }
   )
 );

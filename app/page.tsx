@@ -1,10 +1,9 @@
 import Link from "next/link";
-import { SiteHeader } from "@/components/layout/SiteHeader";
-import { SiteFooter } from "@/components/layout/SiteFooter";
 import { CartDrawer } from "@/components/cart/CartDrawer";
-import { HeroCarousel } from "@/components/home/HeroCarousel";
 import { TrustBadges } from "@/components/home/TrustBadges";
 import { CategoryGrid } from "@/components/home/CategoryGrid";
+import { WhyChooseBlock } from "@/components/home/WhyChooseBlock";
+import Image from "next/image";
 
 export default function HomePage() {
   return (
@@ -12,9 +11,9 @@ export default function HomePage() {
       <CartDrawer />
 
       <main>
-        <HeroCarousel />
         <TrustBadges />
         <CategoryGrid />
+        <WhyChooseBlock />
 
         {/* Farm story block */}
         <section className="max-w-7xl mx-auto px-6 py-20 grid md:grid-cols-2 gap-12 items-center">
@@ -36,11 +35,17 @@ export default function HomePage() {
               Shop all products
             </Link>
           </div>
-          <div className="aspect-[4/3] rounded-2xl bg-leaf/10" />
+          {/* <div className="aspect-[4/3] rounded-2xl bg-leaf/10" /> */}
+          <div className="aspect-[4/3] rounded-2xl overflow-hidden relative">
+            <Image
+              src="/images/hero_caurosel1.jpeg"
+              alt="Divantraa"
+              fill
+              className="object-cover"
+            />
+          </div>
         </section>
       </main>
-
-      <SiteFooter />
     </>
   );
 }

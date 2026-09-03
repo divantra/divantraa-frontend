@@ -2,20 +2,21 @@
 
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import Image from "next/image";
-import { useState } from "react";
-import { Star, FileCheck, ShoppingBag } from "lucide-react";
-import { SiteHeader } from "@/components/layout/SiteHeader";
+import Image, { StaticImageData } from "next/image";
+import { useState, useTransition } from "react";
+import { Star, FileCheck, ShoppingBag, Minus, Plus } from "lucide-react";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { CartDrawer } from "@/components/cart/CartDrawer";
 import { api } from "@/lib/api";
-import { useCartStore } from "@/store/useCartStore";
+import { useCartStore, type CartLine } from "@/store/useCartStore";
 import type { Product } from "@/types/product";
 
 export default function ProductDetailsPage() {
   const { slug } = useParams<{ slug: string }>();
   const [activeImage, setActiveImage] = useState(0);
-  const addItem = useCartStore((s) => s.addItem);
+  const { addItem, updateQuantity, getItemQuantity } = useCartStore();
+  const [isPending, startTransition] = useTransition();
+  const [added, setAdded] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ["product", slug],
@@ -32,13 +33,34 @@ export default function ProductDetailsPage() {
 
   const product = data;
 
-  function handleAddToCart() {
-    addItem({
-      productId: product.id,
-      title: product.title,
-      slug: product.slug,
-      price: Number(product.price),
-      image: product.images[0] ?? "",
+  const cartQuantity = getItemQuantity(product.id);
+
+  const handleAddToCart = () => {
+    startTransition(() => {
+      addItem(
+        {
+          productId: product.id,
+          title: product.title,
+          slug: product.slug,
+          price: Number(product.price),
+          image: product.images[0] ?? "",
+        },
+        1
+      );
+      setAdded(true);
+      setTimeout(() => setAdded(false), 1500);
+    });
+  };
+
+  const handleBuyNow = () => {
+    startTransition(() => {
+      addItem({
+        productId: product.id,
+        title: product.title,
+        slug: product.slug,
+        price: Number(product.price),
+        image: product.images[0] ?? "",
+      });
     });
   }
 
@@ -105,19 +127,33 @@ export default function ProductDetailsPage() {
             ))}
           </div>
 
-          <div className="flex gap-3 mb-6">
-            <button
-              onClick={handleAddToCart}
-              className="flex-1 flex items-center justify-center gap-2 rounded-xl border-2 border-leaf text-leaf font-medium py-3.5 hover:bg-leaf/5 transition-colors"
-            >
-              <ShoppingBag size={18} /> Add to cart
-            </button>
-            <button
-              onClick={handleAddToCart}
-              className="flex-1 rounded-xl bg-leaf text-white font-medium py-3.5 hover:opacity-90 transition-opacity"
-            >
-              Buy now
-            </button>
+          <div className="grid grid-cols-2 gap-3 mb-6">
+            {cartQuantity > 0 ? (
+              <div className="flex items-center justify-center border-2 border-leaf rounded-xl">
+                <button
+                  onClick={() => updateQuantity(product.id, cartQuantity - 1)}
+                  className="p-3.5 text-leaf"
+                >
+                  <Minus size={18} />
+                </button>
+                <span className="px-4 font-medium">{cartQuantity} in cart</span>
+                <button
+                  onClick={() => updateQuantity(product.id, cartQuantity + 1)}
+                  className="p-3.5 text-leaf"
+                >
+                  <Plus size={18} />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={handleAddToCart}
+                disabled={isPending || added}
+                className="flex-1 flex items-center justify-center gap-2 rounded-xl border-2 border-leaf text-leaf font-medium py-3.5 hover:bg-leaf/5 transition-colors disabled:opacity-50 disabled:pointer-events-none"
+              >
+                <ShoppingBag size={18} /> {isPending ? "Adding..." : added ? "Added!" : "Add to cart"}
+              </button>
+            )}
+            <button className="flex-1 rounded-xl bg-leaf text-white font-medium py-3.5 hover:opacity-90 transition-opacity">Buy now</button>
           </div>
 
           {product.labReportUrl && (
@@ -137,8 +173,6 @@ export default function ProductDetailsPage() {
           </div>
         </div>
       </main>
-
-      <SiteFooter />
     </>
   );
 }

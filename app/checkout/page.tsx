@@ -171,8 +171,6 @@ export default function CheckoutPage() {
           </button>
         </aside>
       </main>
-
-      <SiteFooter />
     </>
   );
 }

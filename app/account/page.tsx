@@ -106,8 +106,6 @@ export default function AccountPage() {
           </button>
         </div>
       </main>
-
-      <SiteFooter />
     </>
   );
 }
