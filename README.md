@@ -8,7 +8,7 @@ cp .env.example .env.local     # set NEXT_PUBLIC_API_URL to your backend
 npm run dev                     # http://localhost:3000
 ```
 
-Requires the `anveshan-backend` API running (default `http://localhost:5000`).
+Requires the `divantraa-backend` API running (default `http://localhost:5000`).
 
 ## Login flow (button-free, mobile OTP)
 
