@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Pencil } from "lucide-react";
-import { useSendOtp, useVerifyOtp } from "@/hooks/useAuth";
+import { useSendOtp, useResendOtp, useVerifyOtp } from "@/hooks/useAuth";
+import { getAxiosErrorMessage } from "@/lib/errorUtils";
 
 interface OtpStepProps {
   phone: string;
@@ -11,21 +12,25 @@ interface OtpStepProps {
   onVerified: (isNewUser: boolean) => void;
 }
 
-const OTP_LENGTH = 4;
+const OTP_LENGTH = 6;
 const RESEND_SECONDS = 30;
 
 /**
- * 4 individual OTP boxes. As soon as all 4 digits are filled, verification
+ * 6 individual OTP boxes. As soon as all 6 digits are filled, verification
  * fires automatically — there is no "Verify" button. Includes an "Edit"
  * link to go back and correct the phone number, and a resend-OTP timer.
+ *
+ * Resend uses POST /auth/otp/resend (dedicated endpoint, separately rate-limited).
  */
 export function OtpStep({ phone, onEditPhone, onVerified }: OtpStepProps) {
   const [digits, setDigits] = useState<string[]>(Array(OTP_LENGTH).fill(""));
   const [secondsLeft, setSecondsLeft] = useState(RESEND_SECONDS);
+  const [resendError, setResendError] = useState<string | null>(null);
   const inputsRef = useRef<Array<HTMLInputElement | null>>([]);
   const hasAutoSubmitted = useRef(false);
 
-  const sendOtp = useSendOtp();
+  const sendOtp = useSendOtp();     // for initial send (not used here)
+  const resendOtp = useResendOtp(); // for explicit resend
   const verifyOtp = useVerifyOtp();
 
   const code = digits.join("");
@@ -35,13 +40,14 @@ export function OtpStep({ phone, onEditPhone, onVerified }: OtpStepProps) {
     inputsRef.current[0]?.focus();
   }, []);
 
+  // Countdown timer for resend button
   useEffect(() => {
     if (secondsLeft <= 0) return;
     const t = setTimeout(() => setSecondsLeft((s) => s - 1), 1000);
     return () => clearTimeout(t);
   }, [secondsLeft]);
 
-  // Auto-verify the instant the 4th digit is entered.
+  // Auto-verify the instant the 6th digit is entered
   useEffect(() => {
     if (isComplete && !hasAutoSubmitted.current && !verifyOtp.isPending) {
       hasAutoSubmitted.current = true;
@@ -88,12 +94,32 @@ export function OtpStep({ phone, onEditPhone, onVerified }: OtpStepProps) {
   }
 
   function handleResend() {
+    setResendError(null);
     hasAutoSubmitted.current = false;
     setDigits(Array(OTP_LENGTH).fill(""));
     setSecondsLeft(RESEND_SECONDS);
-    sendOtp.mutate(phone);
+    resendOtp.mutate(phone, {
+      onError: (err) => {
+        const msg = getAxiosErrorMessage(err);
+        setResendError(msg);
+      },
+    });
     inputsRef.current[0]?.focus();
   }
+
+  // Derive a friendly error message for verify errors
+  const verifyErrorMessage = (() => {
+    if (!verifyOtp.isError) return null;
+    const status = (verifyOtp.error as any)?.response?.status;
+    if (status === 403) {
+      const msg: string = (verifyOtp.error as any)?.response?.data?.message ?? "";
+      if (msg.toLowerCase().includes("block")) return "Your account has been blocked. Please contact support.";
+      if (msg.toLowerCase().includes("deactivat") || msg.toLowerCase().includes("inactiv"))
+        return "Your account is deactivated. Please contact support to reactivate.";
+      return msg || "Access denied. Please contact support.";
+    }
+    return "That code didn't work. Try again.";
+  })();
 
   return (
     <motion.div
@@ -114,7 +140,7 @@ export function OtpStep({ phone, onEditPhone, onVerified }: OtpStepProps) {
         <Pencil size={13} /> Edit number
       </button>
 
-      <div className="flex gap-3 justify-start" onPaste={handlePaste}>
+      <div className="flex gap-2.5 justify-start" onPaste={handlePaste}>
         {digits.map((digit, i) => (
           <input
             key={i}
@@ -127,7 +153,7 @@ export function OtpStep({ phone, onEditPhone, onVerified }: OtpStepProps) {
             value={digit}
             onChange={(e) => handleDigitChange(i, e.target.value)}
             onKeyDown={(e) => handleKeyDown(i, e)}
-            className={`h-14 w-12 rounded-xl border-2 text-center text-2xl font-semibold text-ink outline-none transition-colors bg-white ${
+            className={`h-14 w-11 rounded-xl border-2 text-center text-2xl font-semibold text-ink outline-none transition-colors bg-white ${
               verifyOtp.isError
                 ? "border-red-400"
                 : digit
@@ -138,12 +164,12 @@ export function OtpStep({ phone, onEditPhone, onVerified }: OtpStepProps) {
         ))}
       </div>
 
-      <div className="mt-4 h-5">
+      <div className="mt-4 min-h-5">
         {verifyOtp.isPending && (
           <p className="text-xs text-leaf animate-pulse">Verifying…</p>
         )}
-        {verifyOtp.isError && (
-          <p className="text-xs text-red-500">That code didn&apos;t work. Try again.</p>
+        {verifyErrorMessage && (
+          <p className="text-xs text-red-500">{verifyErrorMessage}</p>
         )}
       </div>
 
@@ -155,12 +181,15 @@ export function OtpStep({ phone, onEditPhone, onVerified }: OtpStepProps) {
             type="button"
             onClick={handleResend}
             className="text-leaf font-medium hover:underline"
-            disabled={sendOtp.isPending}
+            disabled={resendOtp.isPending}
           >
-            {sendOtp.isPending ? "Resending…" : "Resend code"}
+            {resendOtp.isPending ? "Resending…" : "Resend code"}
           </button>
         )}
       </div>
+      {resendError && (
+        <p className="mt-1 text-xs text-red-500">{resendError}</p>
+      )}
     </motion.div>
   );
 }
