@@ -12,7 +12,7 @@ type Step = "phone" | "otp" | "profile";
 /**
  * Full login/signup flow:
  *  1. Phone number -> OTP auto-sent at 10 digits (no button)
- *  2. OTP -> auto-verified at 4 digits (no button), can edit phone
+ *  2. OTP -> auto-verified at 6 digits (no button), can edit phone
  *  3a. New user  -> collect name/email, then -> /account
  *  3b. Existing user -> straight to /account
  */

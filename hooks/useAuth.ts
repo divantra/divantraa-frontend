@@ -1,39 +1,59 @@
 import { useMutation } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { useAuthStore } from "@/store/useAuthStore";
+import { useAuthStore, type AuthUser } from "@/store/useAuthStore";
 
-interface SendOtpResponse {
+// ── Shared response types ──────────────────────────────────────
+
+interface OtpResponse {
   success: true;
   message: string;
   expiresAt: string;
-  devOtpHint?: string;
+  /** Dev-mode hint only — never shown to end users */
+  devHint?: string;
 }
 
 interface VerifyOtpResponse {
   success: true;
   accessToken: string;
   isNewUser: boolean;
-  user: {
-    id: string;
-    phone: string;
-    name: string | null;
-    email: string | null;
-    role: "CUSTOMER" | "ADMIN";
-    isProfileComplete: boolean;
-  };
+  user: AuthUser;
 }
 
-/** Fires automatically once the phone field has exactly 10 digits. */
+// ── Auth hooks ─────────────────────────────────────────────────
+
+/**
+ * POST /auth/otp/send
+ * Fires automatically once the phone field has exactly 10 digits.
+ * Backend accepts { phone } (10-digit) and converts to E164 internally.
+ */
 export function useSendOtp() {
   return useMutation({
     mutationFn: async (phone: string) => {
-      const { data } = await api.post<SendOtpResponse>("/auth/otp/send", { phone });
+      const { data } = await api.post<OtpResponse>("/auth/otp/send", { phone });
       return data;
     },
   });
 }
 
-/** Fires automatically once all 4 OTP digits are filled. */
+/**
+ * POST /auth/otp/resend
+ * Fires when the user explicitly taps "Resend code" after the timer expires.
+ * Rate-limited separately from /otp/send; returns 429 when resend limit hit.
+ */
+export function useResendOtp() {
+  return useMutation({
+    mutationFn: async (phone: string) => {
+      const { data } = await api.post<OtpResponse>("/auth/otp/resend", { phone });
+      return data;
+    },
+  });
+}
+
+/**
+ * POST /auth/otp/verify
+ * Fires automatically once all 6 OTP digits are filled.
+ * On success, stores the access token + user in memory.
+ */
 export function useVerifyOtp() {
   const setSession = useAuthStore((s) => s.setSession);
 
@@ -48,14 +68,22 @@ export function useVerifyOtp() {
   });
 }
 
+/**
+ * POST /auth/complete-profile
+ * Auth required. Called once for new users right after first OTP verification.
+ * Updates the in-memory user with the completed profile.
+ */
 export function useCompleteProfile() {
   const setSession = useAuthStore((s) => s.setSession);
   const accessToken = useAuthStore((s) => s.accessToken);
 
   return useMutation({
     mutationFn: async (input: { name: string; email?: string }) => {
-      const { data } = await api.post("/auth/complete-profile", input);
-      return data as { success: true; user: VerifyOtpResponse["user"] };
+      const { data } = await api.post<{ success: true; user: AuthUser }>(
+        "/auth/complete-profile",
+        input
+      );
+      return data;
     },
     onSuccess: (data) => {
       if (accessToken) setSession(accessToken, data.user);
@@ -63,6 +91,55 @@ export function useCompleteProfile() {
   });
 }
 
+// ── User / account hooks ───────────────────────────────────────
+
+/**
+ * PATCH /user/profile
+ * Updates name and/or email. Pass email: null to clear it.
+ * Updates the in-memory user on success.
+ */
+export function useUpdateProfile() {
+  const setSession = useAuthStore((s) => s.setSession);
+  const accessToken = useAuthStore((s) => s.accessToken);
+
+  return useMutation({
+    mutationFn: async (input: { name?: string; email?: string | null }) => {
+      const { data } = await api.patch<{ success: true; user: AuthUser }>(
+        "/user/profile",
+        input
+      );
+      return data;
+    },
+    onSuccess: (data) => {
+      if (accessToken) setSession(accessToken, data.user);
+    },
+  });
+}
+
+/**
+ * DELETE /user/account
+ * Soft-deletes the account and revokes all sessions.
+ * Clears the in-memory session on success.
+ */
+export function useDeactivateAccount() {
+  const clearSession = useAuthStore((s) => s.clearSession);
+
+  return useMutation({
+    mutationFn: async () => {
+      const { data } = await api.delete<{ success: true; message: string }>(
+        "/user/account",
+        { data: { confirm: true } }
+      );
+      return data;
+    },
+    onSuccess: () => clearSession(),
+  });
+}
+
+/**
+ * POST /auth/logout
+ * Revokes the refresh cookie and clears the in-memory session.
+ */
 export function useLogout() {
   const clearSession = useAuthStore((s) => s.clearSession);
   return useMutation({

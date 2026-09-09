@@ -5,33 +5,33 @@ import Image from "next/image";
 import { X } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useUiStore } from "@/store/useUiStore";
-import { useSendOtp, useVerifyOtp } from "@/hooks/useAuth";
+import { useSendOtp, useResendOtp, useVerifyOtp } from "@/hooks/useAuth";
 import { ProfileStep } from "./ProfileStep";
+import { getAxiosErrorMessage, getAxiosErrorStatus } from "@/lib/errorUtils";
 
 type ModalStep = "phone" | "otp" | "profile" | "done";
 
-const OTP_LENGTH = 4;
+const OTP_LENGTH = 6;
+const RESEND_SECONDS = 30;
 
 /**
- * Sign-in modal styled to match the reference design:
- *  - sits over the page as an overlay (promo bar / header stay visible behind)
- *  - top banner image with brand mark
- *  - white card below with a single inline "+91 | phone input | Login" row
- *  - close (X) button
+ * Sign-in modal: phone → OTP → profile (new users only) → done.
  *
- * Behavior still follows the requested no-extra-click flow:
- *  - Typing the 10th digit auto-sends the OTP (the Login button is a
- *    fallback for anyone who prefers to tap it explicitly).
- *  - Once 4 OTP digits are filled, verification fires automatically.
- *  - New users see a short name/email step; returning users close
- *    straight into their session.
+ * Typing the 10th digit auto-sends the OTP.
+ * Once all 6 OTP digits are filled, verification fires automatically.
+ * New users see a short name/email step; returning users close straight into session.
  */
 export function LoginModal() {
   const { isLoginModalOpen, closeLoginModal } = useUiStore();
   const [step, setStep] = useState<ModalStep>("phone");
   const [phone, setPhone] = useState("");
   const [digits, setDigits] = useState<string[]>(Array(OTP_LENGTH).fill(""));
+  const [secondsLeft, setSecondsLeft] = useState(RESEND_SECONDS);
+  const [resendTimerActive, setResendTimerActive] = useState(false);
+  const [blockError, setBlockError] = useState<string | null>(null);
+
   const sendOtp = useSendOtp();
+  const resendOtp = useResendOtp();
   const verifyOtp = useVerifyOtp();
 
   const isPhoneValid = /^[6-9]\d{9}$/.test(phone);
@@ -40,6 +40,9 @@ export function LoginModal() {
     setStep("phone");
     setPhone("");
     setDigits(Array(OTP_LENGTH).fill(""));
+    setSecondsLeft(RESEND_SECONDS);
+    setResendTimerActive(false);
+    setBlockError(null);
   }
 
   function handleClose() {
@@ -47,9 +50,25 @@ export function LoginModal() {
     setTimeout(reset, 300); // wait for exit animation
   }
 
+  function startResendTimer() {
+    setResendTimerActive(true);
+    setSecondsLeft(RESEND_SECONDS);
+    const interval = setInterval(() => {
+      setSecondsLeft((s) => {
+        if (s <= 1) { clearInterval(interval); setResendTimerActive(false); return 0; }
+        return s - 1;
+      });
+    }, 1000);
+  }
+
   function triggerSendOtp() {
     if (!isPhoneValid || sendOtp.isPending) return;
-    sendOtp.mutate(phone, { onSuccess: () => setStep("otp") });
+    sendOtp.mutate(phone, {
+      onSuccess: () => {
+        setStep("otp");
+        startResendTimer();
+      },
+    });
   }
 
   function handleDigitChange(index: number, value: string) {
@@ -58,18 +77,41 @@ export function LoginModal() {
     next[index] = char;
     setDigits(next);
 
-    const el = document.getElementById(`modal-otp-${index + 1}`);
-    if (char && el) el.focus();
+    // Advance focus
+    const nextEl = document.getElementById(`modal-otp-${index + 1}`);
+    if (char && nextEl) nextEl.focus();
 
+    // Auto-verify when all filled
     if (next.every((d) => d !== "")) {
+      setBlockError(null);
       verifyOtp.mutate(
         { phone, code: next.join("") },
         {
           onSuccess: (data) => setStep(data.isNewUser ? "profile" : "done"),
-          onError: () => setDigits(Array(OTP_LENGTH).fill("")),
+          onError: (err) => {
+            const status = getAxiosErrorStatus(err);
+            if (status === 403) {
+              const msg = getAxiosErrorMessage(err);
+              setBlockError(
+                msg.toLowerCase().includes("block")
+                  ? "Your account has been blocked. Please contact support."
+                  : "Your account is deactivated. Contact support to reactivate."
+              );
+            }
+            setDigits(Array(OTP_LENGTH).fill(""));
+            // Re-focus first input
+            setTimeout(() => document.getElementById("modal-otp-0")?.focus(), 50);
+          },
         }
       );
     }
+  }
+
+  function handleResend() {
+    setDigits(Array(OTP_LENGTH).fill(""));
+    setBlockError(null);
+    resendOtp.mutate(phone, { onSuccess: () => startResendTimer() });
+    setTimeout(() => document.getElementById("modal-otp-0")?.focus(), 50);
   }
 
   return (
@@ -92,13 +134,14 @@ export function LoginModal() {
             className="fixed inset-0 z-[61] flex items-center justify-center p-4"
           >
             <div className="relative w-full max-w-md">
-                <button
-                    onClick={handleClose}
-                    aria-label="Close"
-                    className="absolute -top-8 left-1/2 -translate-x-1/2 z-20 h-6 w-6 rounded-full bg-white/90 flex items-center justify-center text-ink hover:bg-white"
-                >
-                    <X size={14} />
-                </button>
+              <button
+                onClick={handleClose}
+                aria-label="Close"
+                className="absolute -top-8 left-1/2 -translate-x-1/2 z-20 h-6 w-6 rounded-full bg-white/90 flex items-center justify-center text-ink hover:bg-white"
+              >
+                <X size={14} />
+              </button>
+
               <div className="relative w-full rounded-2xl overflow-hidden bg-forest shadow-2xl">
                 {/* Full background image */}
                 <div className="absolute inset-0">
@@ -114,11 +157,9 @@ export function LoginModal() {
 
                 {/* Form content */}
                 <div className="relative z-10 flex flex-col justify-end p-6 min-h-[550px]">
-                  {/* <span className="absolute top-4 right-4 font-display text-lg text-white tracking-wide">
-                      Divantraa
-                  </span> */}
-                  
                   <div className="bg-white rounded-xl p-6 sm:p-8 shadow-lg">
+
+                    {/* ── Phone step ── */}
                     {step === "phone" && (
                       <>
                         <h2 className="text-center font-display text-2xl text-ink mb-6">Sign In</h2>
@@ -136,11 +177,14 @@ export function LoginModal() {
                             onChange={(e) => {
                               const v = e.target.value.replace(/\D/g, "").slice(0, 10);
                               setPhone(v);
-                              if (v.length === 10) {
+                              if (v.length === 10 && /^[6-9]\d{9}$/.test(v)) {
                                 setTimeout(() => {
-                                  if (/^[6-9]\d{9}$/.test(v)) {
-                                    sendOtp.mutate(v, { onSuccess: () => setStep("otp") });
-                                  }
+                                  sendOtp.mutate(v, {
+                                    onSuccess: () => {
+                                      setStep("otp");
+                                      startResendTimer();
+                                    },
+                                  });
                                 }, 0);
                               }
                             }}
@@ -155,7 +199,9 @@ export function LoginModal() {
                           </button>
                         </div>
                         {sendOtp.isError && (
-                          <p className="mt-2 text-xs text-red-500">Couldn&apos;t send OTP. Try again.</p>
+                          <p className="mt-2 text-xs text-red-500">
+                            {getAxiosErrorMessage(sendOtp.error, "Couldn't send OTP. Try again.")}
+                          </p>
                         )}
                         <p className="mt-4 flex items-start gap-1.5 text-xs text-ink/50 leading-relaxed">
                           <span>ⓘ</span>
@@ -168,6 +214,7 @@ export function LoginModal() {
                       </>
                     )}
 
+                    {/* ── OTP step ── */}
                     {step === "otp" && (
                       <>
                         <h2 className="text-center font-display text-2xl text-ink mb-1">Enter OTP</h2>
@@ -178,12 +225,14 @@ export function LoginModal() {
                           onClick={() => {
                             setStep("phone");
                             setDigits(Array(OTP_LENGTH).fill(""));
+                            setBlockError(null);
                           }}
                           className="block mx-auto text-xs text-leaf font-medium mb-5 hover:underline"
                         >
                           Edit number
                         </button>
-                        <div className="flex justify-center gap-3 mb-3">
+
+                        <div className="flex justify-center gap-2 mb-3">
                           {digits.map((digit, i) => (
                             <input
                               key={i}
@@ -193,19 +242,57 @@ export function LoginModal() {
                               maxLength={1}
                               value={digit}
                               onChange={(e) => handleDigitChange(i, e.target.value)}
-                              className="h-12 w-11 rounded-lg border-2 border-ink/15 focus:border-leaf text-center text-lg font-semibold outline-none"
+                              onKeyDown={(e) => {
+                                if (e.key === "Backspace" && !digits[i] && i > 0) {
+                                  document.getElementById(`modal-otp-${i - 1}`)?.focus();
+                                }
+                              }}
+                              className={`h-12 w-10 rounded-lg border-2 text-center text-lg font-semibold outline-none transition-colors ${
+                                (verifyOtp.isError || blockError)
+                                  ? "border-red-400"
+                                  : digit ? "border-leaf" : "border-ink/15 focus:border-leaf"
+                              }`}
                             />
                           ))}
                         </div>
-                        <p className="text-center text-xs h-4 text-leaf">
-                          {verifyOtp.isPending && "Verifying…"}
-                          {verifyOtp.isError && <span className="text-red-500">Incorrect code, try again</span>}
-                        </p>
+
+                        <div className="text-center text-xs min-h-5 mb-3">
+                          {verifyOtp.isPending && <span className="text-leaf">Verifying…</span>}
+                          {blockError && (
+                            <span className="text-red-500">{blockError}</span>
+                          )}
+                          {verifyOtp.isError && !blockError && (
+                            <span className="text-red-500">Incorrect code, try again</span>
+                          )}
+                        </div>
+
+                        {/* Resend */}
+                        <div className="text-center text-xs text-ink/60">
+                          {resendTimerActive ? (
+                            <span>Resend in 0:{secondsLeft.toString().padStart(2, "0")}</span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={handleResend}
+                              disabled={resendOtp.isPending}
+                              className="text-leaf font-medium hover:underline"
+                            >
+                              {resendOtp.isPending ? "Resending…" : "Resend OTP"}
+                            </button>
+                          )}
+                        </div>
+                        {resendOtp.isError && (
+                          <p className="text-center text-xs text-red-500 mt-1">
+                            {getAxiosErrorMessage(resendOtp.error, "Resend failed. Try again.")}
+                          </p>
+                        )}
                       </>
                     )}
 
+                    {/* ── Profile step (new users only) ── */}
                     {step === "profile" && <ProfileStep onComplete={() => setStep("done")} />}
 
+                    {/* ── Done ── */}
                     {step === "done" && (
                       <div className="text-center py-4">
                         <p className="font-display text-xl text-ink mb-2">You&apos;re signed in 🎉</p>

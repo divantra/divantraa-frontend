@@ -1,11 +1,17 @@
 import { create } from "zustand";
 
+/**
+ * AuthUser matches the SafeUser shape returned by the backend:
+ *   { id, mobile, name, email, role, status, isProfileComplete, ... }
+ * `mobile` is E164 format: +91XXXXXXXXXX
+ */
 export interface AuthUser {
   id: string;
-  phone: string;
+  mobile: string;
   name: string | null;
   email: string | null;
-  role: "CUSTOMER" | "ADMIN";
+  role: "CUSTOMER" | "ADMIN" | "STAFF" | "VENDOR";
+  status: "ACTIVE" | "INACTIVE" | "BLOCKED";
   isProfileComplete: boolean;
 }
 
