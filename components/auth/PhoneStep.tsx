@@ -72,7 +72,7 @@ export function PhoneStep({ onOtpSent }: PhoneStepProps) {
           type="tel"
           inputMode="numeric"
           autoFocus
-          placeholder="98765 43210"
+          placeholder="9XXXX XXXXX"
           value={phone}
           onChange={(e) => handleChange(e.target.value)}
           onBlur={() => setTouched(true)}
