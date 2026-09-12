@@ -28,7 +28,7 @@ const slides = [
     subtitle:
       "Bringing authentic, traditionally crafted foods from our roots to your home.",
     cta: "Shop Ghee",
-    href: "/products?category=ghee",
+    href: "/products",
   },
   {
     title: "Goodness, made the traditional way",

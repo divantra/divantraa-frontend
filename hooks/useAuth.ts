@@ -52,10 +52,15 @@ export function useResendOtp() {
 /**
  * POST /auth/otp/verify
  * Fires automatically once all 6 OTP digits are filled.
- * On success, stores the access token + user in memory.
+ * On success, stores the access token + user in memory AND marks the store
+ * as hydrated — we already have fresh session data, so there is no reason to
+ * wait for AuthProvider's independent /auth/refresh call to complete first.
+ * Without this, navigating to /account immediately after login shows a
+ * skeleton until the unrelated refresh call finally resolves.
  */
 export function useVerifyOtp() {
-  const setSession = useAuthStore((s) => s.setSession);
+  const setSession  = useAuthStore((s) => s.setSession);
+  const setHydrated = useAuthStore((s) => s.setHydrated);
 
   return useMutation({
     mutationFn: async ({ phone, code }: { phone: string; code: string }) => {
@@ -64,6 +69,7 @@ export function useVerifyOtp() {
     },
     onSuccess: (data) => {
       setSession(data.accessToken, data.user);
+      setHydrated(true); // session is fresh — no need to wait for AuthProvider's refresh
     },
   });
 }

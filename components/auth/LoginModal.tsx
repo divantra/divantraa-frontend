@@ -1,15 +1,31 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import { X } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
+import { useRouter } from "next/navigation";
 import { useUiStore } from "@/store/useUiStore";
 import { useSendOtp, useResendOtp, useVerifyOtp } from "@/hooks/useAuth";
 import { ProfileStep } from "./ProfileStep";
 import { getAxiosErrorMessage, getAxiosErrorStatus } from "@/lib/errorUtils";
 
 type ModalStep = "phone" | "otp" | "profile" | "done";
+
+/** Shown briefly on success then closes + redirects to /account. */
+function AutoRedirectDone({ onClose }: { onClose: () => void }) {
+  useEffect(() => {
+    const t = setTimeout(onClose, 900);
+    return () => clearTimeout(t);
+  }, [onClose]);
+  return (
+    <div className="text-center py-6">
+      <div className="text-4xl mb-3">🎉</div>
+      <p className="font-display text-xl text-ink">You&apos;re signed in!</p>
+      <p className="text-sm text-ink/50 mt-1">Taking you to your account…</p>
+    </div>
+  );
+}
 
 const OTP_LENGTH = 6;
 const RESEND_SECONDS = 30;
@@ -23,12 +39,20 @@ const RESEND_SECONDS = 30;
  */
 export function LoginModal() {
   const { isLoginModalOpen, closeLoginModal } = useUiStore();
+  const router = useRouter();
   const [step, setStep] = useState<ModalStep>("phone");
   const [phone, setPhone] = useState("");
   const [digits, setDigits] = useState<string[]>(Array(OTP_LENGTH).fill(""));
   const [secondsLeft, setSecondsLeft] = useState(RESEND_SECONDS);
   const [resendTimerActive, setResendTimerActive] = useState(false);
   const [blockError, setBlockError] = useState<string | null>(null);
+
+  // Stable reference so AutoRedirectDone's useEffect([onClose]) never
+  // resets the timeout when the parent re-renders during the 900 ms wait.
+  const handleDone = useCallback(() => {
+    closeLoginModal();
+    router.push("/account");
+  }, [closeLoginModal, router]);
 
   const sendOtp = useSendOtp();
   const resendOtp = useResendOtp();
@@ -292,20 +316,12 @@ export function LoginModal() {
                     {/* ── Profile step (new users only) ── */}
                     {step === "profile" && <ProfileStep onComplete={() => setStep("done")} />}
 
-                    {/* ── Done ── */}
+                    {/* ── Done — auto-redirect to /account ── */}
                     {step === "done" && (
-                      <div className="text-center py-4">
-                        <p className="font-display text-xl text-ink mb-2">You&apos;re signed in 🎉</p>
-                        <button
-                          onClick={handleClose}
-                          className="mt-2 rounded-full bg-leaf text-white text-sm font-medium px-6 py-2.5 hover:opacity-90"
-                        >
-                          Continue
-                        </button>
-                      </div>
+                      <AutoRedirectDone onClose={handleDone} />
                     )}
                   </div>
-                  <p className="text-center text-xs text-white/60 pt-4">Powered by Shiprocket</p>
+                  <p className="text-center text-xs text-white/60 pt-4">Divantraa — Farm to Home</p>
                 </div>
               </div>
             </div>

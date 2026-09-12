@@ -104,7 +104,7 @@ const ContactUs = () => {
               <strong>Email:</strong> support@divantra.com
             </p>
             <p>
-              <strong>Phone:</strong> +91 98765 43210
+              <strong>Phone:</strong> +91 8115352152
             </p>
             <p>
               <strong>Address:</strong> Divantra Naturals Pvt Ltd, Bengaluru, India

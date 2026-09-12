@@ -5,13 +5,27 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
-import { ShoppingCart, CircleUser, Menu, X, Search } from "lucide-react";
+import { ShoppingCart, CircleUser, Menu, X, Search, ShieldCheck, LogOut, Package, User } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useCartStore } from "@/store/useCartStore";
 import { useUiStore } from "@/store/useUiStore";
+import { useLogout } from "@/hooks/useAuth";
 import { api } from "@/lib/api";
 import type { Product } from "@/types/product";
 import { useDebounce } from "@/hooks/useDebounce";
+
+function DropdownLink({ href, icon, label, onClick }: { href: string; icon: React.ReactNode; label: string; onClick: () => void }) {
+  return (
+    <Link
+      href={href}
+      onClick={onClick}
+      className="flex items-center gap-3 px-4 py-2.5 text-sm text-ink/70 hover:bg-cream hover:text-ink transition-colors"
+    >
+      <span className="text-ink/40">{icon}</span>
+      {label}
+    </Link>
+  );
+}
 
 export function SiteHeader() {
   const [isClient, setIsClient] = useState(false);
@@ -21,13 +35,27 @@ export function SiteHeader() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
   const debouncedQuery = useDebounce(query, 900);
   const searchWrapperRef = useRef<HTMLDivElement>(null);
+  const userMenuRef = useRef<HTMLDivElement>(null);
 
   const user = useAuthStore((s) => s.user);
   const itemCount = useCartStore((s) => s.itemCount());
   const openCart = useCartStore((s) => s.openCart);
   const { isMobileMenuOpen, toggleMobileMenu, openLoginModal } = useUiStore();
+  const logout = useLogout();
+
+  // Close user menu on outside click
+  useEffect(() => {
+    function handleOutside(e: MouseEvent) {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setUserMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleOutside);
+    return () => document.removeEventListener("mousedown", handleOutside);
+  }, []);
 
   useEffect(() => {
     async function performSearch() {
@@ -155,7 +183,7 @@ export function SiteHeader() {
                 transition={{ duration: 0.2 }}
                 className="flex items-center gap-8 text-sm font-medium text-ink/70"
               >
-                <Link href="/products?category=ghee" className="hover:text-forest">All Products</Link>
+                <Link href="/products" className="hover:text-forest">All Products</Link>
                 <Link href="/products?category=cold-pressed-oils" className="hover:text-forest">Newly Launched</Link>
                 <Link href="/products" className="hover:text-forest">Oils</Link>
                 <Link href="/products" className="hover:text-forest">Wood Pressed Oils</Link>
@@ -178,14 +206,66 @@ export function SiteHeader() {
                 <Search size={24} className="text-[#407a4a] hover:text-forest" />}
             </button>
           </div>
-          <div className="h-5 w-5">
+          {/* User icon / dropdown */}
+          <div className="relative" ref={userMenuRef}>
             {isClient && user ? (
-              <Link href="/account" aria-label="Account">
-                <CircleUser size={24} className="text-[#407a4a] hover:text-forest" />
-              </Link>
+              <>
+                <button
+                  onClick={() => setUserMenuOpen((v) => !v)}
+                  aria-label="Account menu"
+                  className="flex items-center gap-1.5 group"
+                >
+                  <CircleUser size={24} className="text-[#407a4a] group-hover:text-forest transition-colors" />
+                  <span className="hidden md:block text-xs font-medium text-ink/60 max-w-[80px] truncate group-hover:text-ink">
+                    {user.name?.split(" ")[0] ?? "Account"}
+                  </span>
+                </button>
+
+                {/* Dropdown */}
+                <AnimatePresence>
+                  {userMenuOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 6, scale: 0.97 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 6, scale: 0.97 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute right-0 top-full mt-2 w-52 bg-white rounded-2xl shadow-xl border border-ink/8 py-2 z-50"
+                    >
+                      {/* User info */}
+                      <div className="px-4 py-3 border-b border-ink/5">
+                        <p className="font-medium text-sm text-ink truncate">{user.name ?? "My Account"}</p>
+                        <p className="text-xs text-ink/40 mt-0.5">
+                          {user.mobile.startsWith("+91") ? `+91 ${user.mobile.slice(3)}` : user.mobile}
+                        </p>
+                      </div>
+
+                      {/* Links */}
+                      <div className="py-1">
+                        <DropdownLink href="/account" icon={<User size={14} />} label="My Account" onClick={() => setUserMenuOpen(false)} />
+                        <DropdownLink href="/account?tab=orders" icon={<Package size={14} />} label="My Orders" onClick={() => setUserMenuOpen(false)} />
+                        {user.role === "ADMIN" && (
+                          <DropdownLink href="/admin" icon={<ShieldCheck size={14} />} label="Admin Panel" onClick={() => setUserMenuOpen(false)} />
+                        )}
+                      </div>
+
+                      {/* Logout */}
+                      <div className="border-t border-ink/5 pt-1">
+                        <button
+                          onClick={() => { setUserMenuOpen(false); logout.mutate(); }}
+                          disabled={logout.isPending}
+                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 transition-colors"
+                        >
+                          <LogOut size={14} />
+                          {logout.isPending ? "Logging out…" : "Log out"}
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </>
             ) : (
               <button onClick={openLoginModal} aria-label="Sign in">
-                <CircleUser size={24} className="text-[#407a4a] hover:text-forest" />
+                <CircleUser size={24} className="text-[#407a4a] hover:text-forest transition-colors" />
               </button>
             )}
           </div>
