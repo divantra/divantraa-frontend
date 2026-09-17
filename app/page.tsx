@@ -39,7 +39,7 @@ export default function HomePage() {
           {/* <div className="aspect-[4/3] rounded-2xl bg-leaf/10" /> */}
           <div className="aspect-[4/3] rounded-2xl overflow-hidden relative">
             <Image
-              src={getImageUrl("/public/hero_caurosel1.jpeg")}
+              src={getImageUrl("public/hero_caurosel1.jpeg")}
               alt="Divantraa"
               fill
               className="object-cover"
