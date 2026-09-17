@@ -1,8 +1,21 @@
 import axios from "axios";
 import { useAuthStore } from "@/store/useAuthStore";
 
+/**
+ * Base URL strategy:
+ *  • Server-side (SSR / API routes / server components): use the internal
+ *    localhost URL directly — backend and Next.js are on the same machine.
+ *    Read from NEXT_PUBLIC_API_URL (no NEXT_PUBLIC_ prefix, never sent to browser).
+ *  • Client-side (browser): use a relative path.  Nginx routes /api/ straight
+ *    to port 5000 — the browser never needs to know about localhost:5000.
+ */
+const baseURL =
+  typeof window === "undefined"
+    ? (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000/api/v1")
+    : "/api/v1";
+
 export const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000/api/v1",
+  baseURL,
   withCredentials: true, // sends the httpOnly refresh cookie
 });
 
