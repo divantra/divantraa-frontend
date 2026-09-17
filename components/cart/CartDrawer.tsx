@@ -6,6 +6,7 @@ import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
 import { X, Minus, Plus, Trash, ArrowLeft, ShoppingBag } from "lucide-react";
 import { useCartStore } from "@/store/useCartStore";
+import { getImageUrl } from "@/lib/image.utils";
 
 export function CartDrawer() {
   const { isOpen, closeCart, items, updateQuantity, removeItem, subtotal } = useCartStore();
@@ -50,7 +51,7 @@ export function CartDrawer() {
                   </button>
                 </div>
                 <div className="flex flex-col items-center text-center pt-10 px-6">
-                  <Image src="/images/empty_cart.jpeg" alt="Empty cart" width={250} height={250} />
+                  <Image src={getImageUrl('public/empty_cart.jpeg')} alt="Empty cart" width={250} height={250} />
                   <h3 className="font-display text-lg text-ink mt-6">Nothing in your cart yet.</h3>
                   <p className="text-sm text-ink/60 mt-1 max-w-xs mx-auto">
                     Let&apos;s fix that with something pure and delicious.

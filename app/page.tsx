@@ -4,6 +4,7 @@ import { TrustBadges } from "@/components/home/TrustBadges";
 import { CategoryGrid } from "@/components/home/CategoryGrid";
 import { WhyChooseBlock } from "@/components/home/WhyChooseBlock";
 import Image from "next/image";
+import { getImageUrl } from "@/lib/image.utils";
 
 export default function HomePage() {
   return (
@@ -38,7 +39,7 @@ export default function HomePage() {
           {/* <div className="aspect-[4/3] rounded-2xl bg-leaf/10" /> */}
           <div className="aspect-[4/3] rounded-2xl overflow-hidden relative">
             <Image
-              src="/images/hero_caurosel1.jpeg"
+              src={getImageUrl("/public/hero_caurosel1.jpeg")}
               alt="Divantraa"
               fill
               className="object-cover"
