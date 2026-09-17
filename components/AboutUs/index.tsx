@@ -1,4 +1,5 @@
 "use client";
+import { getImageUrl } from "@/lib/image.utils";
 import React from "react";
 
 const AboutUs: React.FC = () => {
@@ -7,7 +8,7 @@ const AboutUs: React.FC = () => {
       {/* Hero Section with Background Image */}
       <section
         className="relative bg-cover bg-top bg-no-repeat py-24 text-center text-white"
-        style={{ backgroundImage: "url('/images/divantraa-logo-main.jpeg')" }}
+        style={{ backgroundImage: "url('/public/divantraa-logo-main.jpeg')" }}
       >
         {/* Overlay for readability */}
         <div className="absolute inset-0 bg-black/40"></div>
@@ -43,7 +44,7 @@ const AboutUs: React.FC = () => {
 
         <div className="flex justify-center">
           <img
-            src="/images/divantraa-logo-main.jpeg"
+            src={getImageUrl('public/divantraa-logo-main.jpeg')}
             alt="About Divantraa"
             className="w-100 h-100 object-contain"
           />

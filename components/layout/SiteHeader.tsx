@@ -13,6 +13,7 @@ import { useLogout } from "@/hooks/useAuth";
 import { api } from "@/lib/api";
 import type { Product } from "@/types/product";
 import { useDebounce } from "@/hooks/useDebounce";
+import { getImageUrl } from "@/lib/image.utils";
 
 function DropdownLink({ href, icon, label, onClick }: { href: string; icon: React.ReactNode; label: string; onClick: () => void }) {
   return (
@@ -108,7 +109,7 @@ export function SiteHeader() {
         </button>
 
         <Link href="/" className="shrink-0">
-          <img className="h-8 w-auto" src="/images/logo.png" alt="Divantraa Logo" />
+          <img className="h-8 w-auto" src={getImageUrl('public/logo.png')} alt="Divantraa Logo" />
         </Link>
 
         <div className="hidden md:flex items-center justify-center flex-1" ref={searchWrapperRef}>

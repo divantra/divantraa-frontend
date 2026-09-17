@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import { getImageUrl } from "@/lib/image.utils";
 
 const categories = [
   { name: "Ghee", slug: "ghee", image: "/images/oil/sesame-oil.png" },
@@ -17,7 +18,7 @@ export function CategoryGrid() {
         </h2>
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 relative w-full p-8">
           <Image
-            src="/images/hero_caurosel1.jpeg"
+            src={getImageUrl('public/hero_caurosel1.jpeg')}
             alt="Categories Background"
             fill
             className="object-cover"

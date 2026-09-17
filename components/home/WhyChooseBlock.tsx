@@ -1,27 +1,28 @@
+import { getImageUrl } from "@/lib/image.utils";
 import Image from "next/image";
 
 export function WhyChooseBlock() {
   const features = [
     {
-      icon: "/images/Asset_390_1.svg",
+      icon: getImageUrl("/public/Native_Sourcing.svg"),
       title: "Native Sourcing",
       description:
         "Highest quality raw material from native regions all over India.",
     },
     {
-      icon: "/images/Asset_391_1.svg",
+      icon: getImageUrl("public/Traditional_Processing.svg"),
       title: "Traditional Processing",
       description:
         "Minimally processed using time-tested methods, made better. For maximum nutrition.",
     },
     {
-      icon: "/images/Asset_394_1.svg",
+      icon: getImageUrl("public/Extensive_Quality.svg"),
       title: "Extensive Quality Checks",
       description:
         "Everything goes through 20+ lab tests, to make sure that you get only what is best.",
     },
     {
-      icon: "/images/Asset_395_1.svg",
+      icon: getImageUrl("public/Better_Rural.svg"),
       title: "Better Rural Lives",
       description:
         "5000+ farmer families are empowered with every product you buy.",

@@ -9,6 +9,7 @@ import { useUiStore } from "@/store/useUiStore";
 import { useSendOtp, useResendOtp, useVerifyOtp } from "@/hooks/useAuth";
 import { ProfileStep } from "./ProfileStep";
 import { getAxiosErrorMessage, getAxiosErrorStatus } from "@/lib/errorUtils";
+import { getImageUrl } from "@/lib/image.utils";
 
 type ModalStep = "phone" | "otp" | "profile" | "done";
 
@@ -170,7 +171,7 @@ export function LoginModal() {
                 {/* Full background image */}
                 <div className="absolute inset-0">
                   <Image
-                    src="/images/divantraa-logo-main.jpeg"
+                    src={getImageUrl('public/divantraa-logo-main.jpeg')}
                     alt=""
                     fill
                     className="object-cover"
