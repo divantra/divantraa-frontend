@@ -6,6 +6,7 @@ import { PromoBar } from "@/components/layout/PromoBar";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { LoginModal } from "@/components/auth/LoginModal";
+import { CartDrawer } from "@/components/cart/CartDrawer";
 import ClientLayoutWrapper from "@/components/layout/ClientLayoutWrapper";
 
 export const metadata: Metadata = {
@@ -21,6 +22,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <PromoBar />
           <SiteHeader />
           <ClientLayoutWrapper>{children}</ClientLayoutWrapper>
+          <CartDrawer />
           <LoginModal />
           <SiteFooter />
         </Providers>

@@ -1,7 +1,6 @@
 import Link from "next/link";
-import { CartDrawer } from "@/components/cart/CartDrawer";
 import { TrustBadges } from "@/components/home/TrustBadges";
-import { CategoryGrid } from "@/components/home/CategoryGrid";
+import { CategoryProductSlider } from "@/components/home/CategoryProductSlider";
 import { WhyChooseBlock } from "@/components/home/WhyChooseBlock";
 import Image from "next/image";
 import { getImageUrl } from "@/lib/image.utils";
@@ -9,11 +8,9 @@ import { getImageUrl } from "@/lib/image.utils";
 export default function HomePage() {
   return (
     <>
-      <CartDrawer />
-
       <main>
         <TrustBadges />
-        <CategoryGrid />
+        <CategoryProductSlider />
         <WhyChooseBlock />
 
         {/* Farm story block */}

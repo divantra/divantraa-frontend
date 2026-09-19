@@ -6,11 +6,36 @@ import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
 import { X, Minus, Plus, Trash, ArrowLeft, ShoppingBag } from "lucide-react";
 import { useCartStore } from "@/store/useCartStore";
+import { useAuthStore } from "@/store/useAuthStore";
+import { api } from "@/lib/api";
 import { getImageUrl } from "@/lib/image.utils";
 
 export function CartDrawer() {
   const { isOpen, closeCart, items, updateQuantity, removeItem, subtotal } = useCartStore();
+  const user  = useAuthStore((s) => s.user);
   const total = subtotal();
+
+  // Sync a single item to the server cart (best-effort, non-blocking).
+  async function syncQty(variantId: string, newQty: number) {
+    if (!user) return;
+    try {
+      const { data } = await api.get("/cart");
+      const si = (data.data?.items ?? []).find((i: { variantId: string; id: string }) => i.variantId === variantId);
+      if (!si) return;
+      if (newQty <= 0) await api.delete(`/cart/items/${si.id}`);
+      else             await api.patch(`/cart/items/${si.id}`, { quantity: newQty });
+    } catch { /* non-fatal */ }
+  }
+
+  function handleUpdateQty(variantId: string, newQty: number) {
+    updateQuantity(variantId, newQty);
+    syncQty(variantId, newQty);
+  }
+
+  function handleRemove(variantId: string) {
+    removeItem(variantId);
+    syncQty(variantId, 0);
+  }
 
   useEffect(() => {
     document.body.style.overflow = isOpen ? "hidden" : "unset";
@@ -101,13 +126,18 @@ export function CartDrawer() {
                           {item.variantTitle && (
                             <p className="text-xs text-ink/50 mb-0.5">{item.variantTitle}</p>
                           )}
-                          <p className="text-sm text-ink/60">₹{item.price}</p>
+                          <div className="flex items-baseline gap-1.5">
+                            <span className="text-sm font-medium text-ink">₹{item.price}</span>
+                            {item.compareAtPrice && item.compareAtPrice > item.price && (
+                              <span className="text-xs text-ink/40 line-through">₹{item.compareAtPrice}</span>
+                            )}
+                          </div>
                           <div className="flex items-center justify-between mt-2">
                             <div className="flex items-center border border-ink/10 rounded-full w-fit">
                               <button
                                 className="p-1.5"
                                 onClick={() =>
-                                  updateQuantity(item.variantId, Math.max(1, item.quantity - 1))
+                                  handleUpdateQty(item.variantId, Math.max(1, item.quantity - 1))
                                 }
                                 aria-label="Decrease quantity"
                               >
@@ -116,14 +146,14 @@ export function CartDrawer() {
                               <span className="text-xs w-5 text-center">{item.quantity}</span>
                               <button
                                 className="p-1.5"
-                                onClick={() => updateQuantity(item.variantId, item.quantity + 1)}
+                                onClick={() => handleUpdateQty(item.variantId, item.quantity + 1)}
                                 aria-label="Increase quantity"
                               >
                                 <Plus size={12} />
                               </button>
                             </div>
                             <button
-                              onClick={() => removeItem(item.variantId)}
+                              onClick={() => handleRemove(item.variantId)}
                               className="text-ink/30 hover:text-red-500 transition-colors"
                               aria-label="Remove item"
                             >
@@ -146,17 +176,26 @@ export function CartDrawer() {
                   </div>
                 </div>
 
-                <div className="border-t border-ink/5 px-6 py-4 flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-ink/60">Subtotal</p>
-                    <p className="font-display text-lg">₹{total.toFixed(0)}</p>
+                <div className="border-t border-ink/5 px-6 py-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-ink/60">Subtotal</p>
+                      <p className="font-display text-lg">₹{total.toFixed(0)}</p>
+                    </div>
+                    <Link
+                      href="/checkout"
+                      onClick={closeCart}
+                      className="rounded-xl bg-leaf px-8 py-3.5 text-center text-white font-medium hover:opacity-90 transition-opacity"
+                    >
+                      Checkout
+                    </Link>
                   </div>
                   <Link
-                    href="/checkout"
+                    href="/cart"
                     onClick={closeCart}
-                    className="rounded-xl bg-leaf px-8 py-3.5 text-center text-white font-medium hover:opacity-90 transition-opacity"
+                    className="block text-center text-sm text-leaf hover:underline"
                   >
-                    Continue
+                    View full cart
                   </Link>
                 </div>
               </>

@@ -5,9 +5,9 @@ import { useQuery } from "@tanstack/react-query";
 import Image from "next/image";
 import { useState, useTransition } from "react";
 import { Star, FileCheck, ShoppingBag, Minus, Plus, Package } from "lucide-react";
-import { CartDrawer } from "@/components/cart/CartDrawer";
 import { api } from "@/lib/api";
 import { useCartStore } from "@/store/useCartStore";
+import { useAuthStore } from "@/store/useAuthStore";
 import type { Product } from "@/types/product";
 import {
   getDefaultVariant,
@@ -19,6 +19,7 @@ export default function ProductDetailsPage() {
   const { slug } = useParams<{ slug: string }>();
   const [activeImage, setActiveImage] = useState(0);
   const { addItem, updateQuantity, getItemQuantity, openCart } = useCartStore();
+  const user = useAuthStore((s) => s.user);
   const [isPending, startTransition] = useTransition();
   const [added, setAdded] = useState(false);
 
@@ -76,6 +77,12 @@ export default function ProductDetailsPage() {
   const optionGroups = product ? groupVariantOptions(product.variants) : {};
 
   // ── Cart actions ──────────────────────────────────────────────
+
+  function syncAddToServer(variantId: string, qty: number) {
+    if (!user) return;
+    api.post("/cart/items", { variantId, quantity: qty }).catch(() => {});
+  }
+
   const handleAddToCart = () => {
     if (!product || !activeVariant) return;
     startTransition(() => {
@@ -91,6 +98,7 @@ export default function ProductDetailsPage() {
         },
         1
       );
+      syncAddToServer(activeVariant.id, 1);
       setAdded(true);
       setTimeout(() => setAdded(false), 1500);
     });
@@ -108,6 +116,7 @@ export default function ProductDetailsPage() {
         price:        Number(activeVariant.price),
         image:        displayImages[0] ?? "",
       });
+      syncAddToServer(activeVariant.id, 1);
       openCart();
     });
   };
@@ -130,8 +139,6 @@ export default function ProductDetailsPage() {
 
   return (
     <>
-      <CartDrawer />
-
       <main className="max-w-7xl mx-auto px-6 py-10 grid md:grid-cols-2 gap-12">
 
         {/* ── Image gallery ─────────────────────────────────── */}
@@ -291,7 +298,12 @@ export default function ProductDetailsPage() {
             {cartQuantity > 0 ? (
               <div className="flex items-center justify-center border-2 border-leaf rounded-xl col-span-1">
                 <button
-                  onClick={() => activeVariant && updateQuantity(activeVariant.id, cartQuantity - 1)}
+                  onClick={() => {
+                    if (!activeVariant) return;
+                    const newQty = cartQuantity - 1;
+                    updateQuantity(activeVariant.id, newQty);
+                    syncAddToServer(activeVariant.id, newQty > 0 ? newQty : 0);
+                  }}
                   className="p-3.5 text-leaf"
                   aria-label="Decrease"
                 >
@@ -299,7 +311,12 @@ export default function ProductDetailsPage() {
                 </button>
                 <span className="px-3 font-medium text-sm">{cartQuantity} in cart</span>
                 <button
-                  onClick={() => activeVariant && updateQuantity(activeVariant.id, cartQuantity + 1)}
+                  onClick={() => {
+                    if (!activeVariant) return;
+                    const newQty = cartQuantity + 1;
+                    updateQuantity(activeVariant.id, newQty);
+                    syncAddToServer(activeVariant.id, 1);
+                  }}
                   className="p-3.5 text-leaf"
                   aria-label="Increase"
                 >
