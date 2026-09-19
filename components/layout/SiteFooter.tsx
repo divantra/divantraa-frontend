@@ -8,8 +8,6 @@ import Image from "next/image";
 import { CartFooterBar } from "../cart/CartFooterBar";
 import { getImageUrl } from "@/lib/image.utils";
 
-const certifications = ["ISO 9001:2015", "ISO 22000:2018", "FSSAI", "FDA", "GMP", "HACCP", "IAF"];
-
 const serviceLinks = [
   { label: "Shop", href: "/products" },
   { label: "Track your order", href: "/account" },
@@ -56,12 +54,12 @@ export function SiteFooter() {
     <React.Fragment>
       {/* Certification strip */}
       <div className="relative z-10 width-full mx-auto">
-        <div className="bg-white rounded-md flex flex-wrap items-center justify-center py-5">
+        <div className="bg-[#fafcfa] rounded-md flex flex-wrap items-center justify-center py-5">
           <Image 
-            src={getImageUrl('public/liecence-image.png')}
+            src={getImageUrl('public/fssai.png')}
             alt="Licence"
-            width={800}   // set width
-            height={600}  // set height
+            width={120}   // set width
+            height={120}  // set height
             className="object-contain rounded-md"
           />
         </div>

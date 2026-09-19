@@ -2,14 +2,15 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 export interface CartLine {
-  productId:    string;
-  variantId:    string;          // the purchasable SKU — cart keyed on this
-  title:        string;          // product title
-  variantTitle: string;          // e.g. "500 ml Glass Jar"
-  slug:         string;
-  price:        number;
-  image:        string;
-  quantity:     number;
+  productId:      string;
+  variantId:      string;          // the purchasable SKU — cart keyed on this
+  title:          string;          // product title
+  variantTitle:   string;          // e.g. "500 ml Glass Jar"
+  slug:           string;
+  price:          number;
+  compareAtPrice?: number | null;  // MRP / strikethrough price
+  image:          string;
+  quantity:       number;
 }
 
 interface CartState {
@@ -82,6 +83,12 @@ export const useCartStore = create<CartState>()(
       itemCount:  () => get().items.reduce((s, i) => s + i.quantity, 0),
       totalPrice: () => get().items.reduce((s, i) => s + i.price * i.quantity, 0),
     }),
-    { name: "divantraa-cart" }
+    {
+      name: "divantraa-cart",
+      version: 1,
+      // Don't persist UI state — only cart items matter across sessions
+      partialize: (state) => ({ items: state.items }),
+      migrate: (stored) => ({ items: (stored as { items?: unknown[] })?.items ?? [] }),
+    }
   )
 );

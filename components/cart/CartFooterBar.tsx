@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCartStore } from "@/store/useCartStore";
 import Image from "next/image";
 import { ArrowRight , ShoppingCart } from "lucide-react";
@@ -52,14 +53,14 @@ export function CartFooterBar() {
           </p>
         </div>
 
-        {/* Checkout button */}
-        <button
-          onClick={openCart}
+        {/* View cart button */}
+        <Link
+          href="/cart"
           className="flex items-center gap-1 bg-yellow-400 text-sm font-semibold px-3 py-2 rounded-full text-black hover:bg-yellow-500 transition-colors"
         >
           <ShoppingCart size={16} />
           <ArrowRight size={16} />
-        </button>
+        </Link>
       </div>
     </div>
   );

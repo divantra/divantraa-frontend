@@ -18,10 +18,11 @@ import { Suspense, useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   User, Package, MapPin, HelpCircle, LogOut, AlertTriangle,
   Pencil, Check, X, ChevronDown, ChevronUp, ShieldCheck,
+  Plus, Trash2, Star, Banknote,
 } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useLogout, useUpdateProfile, useDeactivateAccount } from "@/hooks/useAuth";
@@ -43,23 +44,43 @@ interface OrderItem {
 }
 
 interface Order {
-  id: string;
-  status: string;
-  subtotal: number;
-  shippingFee: number;
-  total: number;
-  createdAt: string;
-  shippingName: string;
-  shippingCity: string;
-  shippingState: string;
+  id:              string;
+  orderNumber:     string | null;
+  status:          string;
+  paymentMethod:   string;
+  subtotal:        number;
+  shippingFee:     number;
+  codFee:          number;
+  total:           number;
+  createdAt:       string;
+  shippingName:    string;
+  shippingLine1:   string;
+  shippingLine2:   string | null;
+  shippingCity:    string;
+  shippingState:   string;
   shippingPincode: string;
-  items: OrderItem[];
+  items:           OrderItem[];
+}
+
+interface Address {
+  id:       string;
+  type:     string;
+  fullName: string;
+  phone:    string;
+  line1:    string;
+  line2:    string | null;
+  city:     string;
+  state:    string;
+  pincode:  string;
+  landmark: string | null;
+  isDefault:boolean;
 }
 
 // ── Status helpers ─────────────────────────────────────────────
 
-const STATUS_META: Record<string, { label: string; color: string; step: number }> = {
-  PENDING:    { label: "Order Placed",  color: "bg-amber-100 text-amber-700",  step: 0 },
+const STATUS_META: Record<string, { label: string; color: string; step: number; cancellable?: boolean }> = {
+  PENDING:    { label: "Order Placed",  color: "bg-amber-100 text-amber-700",  step: 0, cancellable: true },
+  CONFIRMED:  { label: "Confirmed",     color: "bg-blue-100 text-blue-700",    step: 1, cancellable: true },
   PAID:       { label: "Payment Done",  color: "bg-blue-100 text-blue-700",    step: 1 },
   PROCESSING: { label: "Processing",   color: "bg-purple-100 text-purple-700", step: 2 },
   SHIPPED:    { label: "Shipped",       color: "bg-cyan-100 text-cyan-700",     step: 3 },
@@ -68,7 +89,7 @@ const STATUS_META: Record<string, { label: string; color: string; step: number }
   REFUNDED:   { label: "Refunded",      color: "bg-gray-100 text-gray-600",     step: -1 },
 };
 
-const TRACKING_STEPS = ["Placed", "Payment Done", "Processing", "Shipped", "Delivered"];
+const TRACKING_STEPS = ["Placed", "Confirmed", "Processing", "Shipped", "Delivered"];
 
 // ── Sidebar nav items ──────────────────────────────────────────
 
@@ -217,9 +238,9 @@ function AccountPageInner() {
       </div>
 
       {/* ── Danger zone (always below) ───────────────────── */}
-      <div className="mt-8">
+      {/* <div className="mt-8">
         <DangerSection deactivateAccount={deactivateAccount} router={router} />
-      </div>
+      </div> */}
     </main>
   );
 }
@@ -345,11 +366,24 @@ function ProfileSection({ user, updateProfile }: { user: any; updateProfile: any
 
 function OrdersSection() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [cancelError, setCancelError] = useState<string | null>(null);
+  const qc = useQueryClient();
 
   const { data: orders, isLoading, isError } = useQuery<Order[]>({
     queryKey: ["my-orders"],
     queryFn:  async () => (await api.get("/orders")).data.data,
     retry:    false,
+  });
+
+  const cancelOrder = useMutation({
+    mutationFn: (orderId: string) => api.post(`/orders/${orderId}/cancel`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["my-orders"] });
+      setCancellingId(null);
+      setCancelError(null);
+    },
+    onError: (err) => setCancelError(getAxiosErrorMessage(err)),
   });
 
   if (isLoading) return <SectionShell title="Order History"><p className="text-sm text-ink/40">Loading orders…</p></SectionShell>;
@@ -370,8 +404,9 @@ function OrdersSection() {
     <SectionShell title={`Order History (${orders.length})`}>
       <div className="space-y-4">
         {orders.map((order) => {
-          const meta   = STATUS_META[order.status] ?? STATUS_META.PENDING;
-          const isOpen = expandedId === order.id;
+          const meta    = STATUS_META[order.status] ?? STATUS_META.PENDING;
+          const isOpen  = expandedId === order.id;
+          const displayId = order.orderNumber ?? `#${order.id.slice(0, 8).toUpperCase()}`;
 
           return (
             <div key={order.id} className="border border-ink/8 rounded-xl overflow-hidden">
@@ -382,9 +417,16 @@ function OrdersSection() {
               >
                 <div className="flex items-center gap-4">
                   <div>
-                    <p className="text-xs text-ink/40 font-mono">#{order.id.slice(0, 8).toUpperCase()}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs text-leaf font-semibold">{displayId}</p>
+                      {order.paymentMethod === "COD" && (
+                        <span className="text-[10px] bg-amber-50 text-amber-600 border border-amber-200 px-1.5 py-0.5 rounded font-medium flex items-center gap-0.5">
+                          <Banknote size={9} /> COD
+                        </span>
+                      )}
+                    </div>
                     <p className="text-sm font-medium text-ink mt-0.5">
-                      {order.items.length} item{order.items.length !== 1 ? "s" : ""} · ₹{order.total}
+                      {order.items.length} item{order.items.length !== 1 ? "s" : ""} · ₹{Number(order.total).toFixed(0)}
                     </p>
                     <p className="text-xs text-ink/40 mt-0.5">
                       {new Date(order.createdAt).toLocaleDateString("en-IN", {
@@ -418,9 +460,6 @@ function OrdersSection() {
                               <div className={`h-2.5 w-2.5 rounded-full border-2 z-10 ${
                                 done ? "bg-leaf border-leaf" : "bg-white border-ink/20"
                               } ${current ? "ring-2 ring-leaf/30 ring-offset-1" : ""}`} />
-                              {i < TRACKING_STEPS.length - 1 && (
-                                <div className={`absolute h-0.5 w-full ${done ? "bg-leaf" : "bg-ink/10"}`} style={{ display: "none" }} />
-                              )}
                               <p className={`text-[10px] mt-1.5 text-center leading-tight ${
                                 done ? "text-leaf font-medium" : "text-ink/30"
                               }`}>{stepLabel}</p>
@@ -428,7 +467,6 @@ function OrdersSection() {
                           );
                         })}
                       </div>
-                      {/* Connector line */}
                       <div className="flex mt-[-22px] mb-2 px-[5%]">
                         {TRACKING_STEPS.slice(0, -1).map((_, i) => (
                           <div key={i} className={`flex-1 h-0.5 ${i < meta.step ? "bg-leaf" : "bg-ink/10"}`} />
@@ -457,7 +495,7 @@ function OrdersSection() {
                           <p className="text-xs text-ink/40 font-mono">{item.sku}</p>
                         </div>
                         <div className="text-right shrink-0">
-                          <p className="text-sm font-medium text-ink">₹{item.price}</p>
+                          <p className="text-sm font-medium text-ink">₹{Number(item.price) * item.quantity}</p>
                           <p className="text-xs text-ink/40">Qty {item.quantity}</p>
                         </div>
                       </div>
@@ -467,22 +505,63 @@ function OrdersSection() {
                   {/* Price summary */}
                   <div className="border-t border-ink/5 pt-3 space-y-1 text-sm">
                     <div className="flex justify-between text-ink/60">
-                      <span>Subtotal</span><span>₹{order.subtotal}</span>
+                      <span>Subtotal</span><span>₹{Number(order.subtotal).toFixed(0)}</span>
                     </div>
                     <div className="flex justify-between text-ink/60">
                       <span>Shipping</span>
-                      <span>{order.shippingFee === 0 ? <span className="text-green-600">Free</span> : `₹${order.shippingFee}`}</span>
+                      <span>{Number(order.shippingFee) === 0 ? <span className="text-green-600">Free</span> : `₹${Number(order.shippingFee)}`}</span>
                     </div>
+                    {Number(order.codFee) > 0 && (
+                      <div className="flex justify-between text-ink/60">
+                        <span>COD Charge</span><span>₹{Number(order.codFee)}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between font-semibold text-ink border-t border-ink/5 pt-1 mt-1">
-                      <span>Total</span><span>₹{order.total}</span>
+                      <span>Total</span><span>₹{Number(order.total).toFixed(0)}</span>
                     </div>
                   </div>
 
                   {/* Delivery address */}
                   <div className="mt-3 p-3 bg-ink/[0.03] rounded-lg text-xs text-ink/50">
                     <p className="font-medium text-ink/70 mb-0.5">Deliver to: {order.shippingName}</p>
+                    <p>{order.shippingLine1}{order.shippingLine2 ? `, ${order.shippingLine2}` : ""}</p>
                     <p>{order.shippingCity}, {order.shippingState} — {order.shippingPincode}</p>
                   </div>
+
+                  {/* Cancel order */}
+                  {meta.cancellable && (
+                    <div className="mt-4">
+                      {cancellingId === order.id ? (
+                        <div className="border border-red-200 bg-red-50 rounded-xl p-4">
+                          <p className="text-sm text-red-700 font-medium mb-1">Cancel this order?</p>
+                          <p className="text-xs text-red-500 mb-3">This cannot be undone. Stock will be restored.</p>
+                          {cancelError && <p className="text-xs text-red-600 mb-2">{cancelError}</p>}
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => cancelOrder.mutate(order.id)}
+                              disabled={cancelOrder.isPending}
+                              className="bg-red-500 text-white text-xs font-medium rounded-lg px-4 py-2 hover:bg-red-600 disabled:opacity-50"
+                            >
+                              {cancelOrder.isPending ? "Cancelling…" : "Yes, cancel"}
+                            </button>
+                            <button
+                              onClick={() => { setCancellingId(null); setCancelError(null); }}
+                              className="border border-ink/10 text-ink text-xs font-medium rounded-lg px-4 py-2 hover:bg-ink/5"
+                            >
+                              Keep order
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => { setCancellingId(order.id); setCancelError(null); }}
+                          className="text-sm text-red-400 hover:text-red-600 font-medium hover:underline"
+                        >
+                          Cancel order
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -495,14 +574,263 @@ function OrdersSection() {
 
 // ── Addresses section ──────────────────────────────────────────
 
+const INDIAN_STATES = [
+  "Andhra Pradesh","Arunachal Pradesh","Assam","Bihar","Chhattisgarh",
+  "Goa","Gujarat","Haryana","Himachal Pradesh","Jharkhand","Karnataka",
+  "Kerala","Madhya Pradesh","Maharashtra","Manipur","Meghalaya","Mizoram",
+  "Nagaland","Odisha","Punjab","Rajasthan","Sikkim","Tamil Nadu","Telangana",
+  "Tripura","Uttar Pradesh","Uttarakhand","West Bengal",
+  "Andaman and Nicobar Islands","Chandigarh","Delhi","Jammu & Kashmir",
+  "Ladakh","Lakshadweep","Puducherry",
+];
+
+const emptyAddrForm = {
+  type: "HOME", fullName: "", phone: "", line1: "", line2: "",
+  city: "", state: "", pincode: "", landmark: "",
+};
+
 function AddressesSection() {
+  const qc   = useQueryClient();
+  const user = useAuthStore((s) => s.user);
+  const [showForm,   setShowForm]   = useState(false);
+  const [editingId,  setEditingId]  = useState<string | null>(null);
+  const [form,       setForm]       = useState({ ...emptyAddrForm });
+  const [formError,  setFormError]  = useState<string | null>(null);
+  const [deleteId,   setDeleteId]   = useState<string | null>(null);
+  const [deleteErr,  setDeleteErr]  = useState<string | null>(null);
+
+  const { data: addrData, isLoading } = useQuery<Address[]>({
+    queryKey: ["addresses"],
+    queryFn:  () => api.get("/addresses").then((r) => r.data.data),
+  });
+  const addresses = addrData ?? [];
+
+  function refetch() { qc.invalidateQueries({ queryKey: ["addresses"] }); }
+
+  const saveMutation = useMutation({
+    mutationFn: (data: typeof emptyAddrForm) =>
+      editingId
+        ? api.patch(`/addresses/${editingId}`, data).then((r) => r.data.data)
+        : api.post("/addresses", data).then((r) => r.data.data),
+    onSuccess: () => { refetch(); setShowForm(false); setEditingId(null); setForm({ ...emptyAddrForm }); setFormError(null); },
+    onError:   (err) => setFormError(getAxiosErrorMessage(err)),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => api.delete(`/addresses/${id}`),
+    onSuccess: () => { refetch(); setDeleteId(null); setDeleteErr(null); },
+    onError:   (err) => setDeleteErr(getAxiosErrorMessage(err)),
+  });
+
+  const defaultMutation = useMutation({
+    mutationFn: (id: string) => api.patch(`/addresses/${id}/default`),
+    onSuccess: () => refetch(),
+  });
+
+  function validateForm() {
+    if (!form.fullName.trim() || form.fullName.trim().length < 2) return "Full name is required.";
+    if (!/^\d{10}$/.test(form.phone.replace(/\s/g, ""))) return "Enter a valid 10-digit mobile.";
+    if (!form.line1.trim() || form.line1.trim().length < 3) return "Address line 1 is required.";
+    if (!form.city.trim()) return "City is required.";
+    if (!form.state) return "State is required.";
+    if (!/^\d{6}$/.test(form.pincode)) return "Enter a valid 6-digit pincode.";
+    return null;
+  }
+
+  function openAdd() {
+    const mobile = user?.mobile ?? "";
+    const phone  = mobile.startsWith("+91") ? mobile.slice(3) : mobile;
+    setForm({ ...emptyAddrForm, fullName: user?.name ?? "", phone });
+    setEditingId(null);
+    setFormError(null);
+    setShowForm(true);
+  }
+  function openEdit(addr: Address) {
+    setForm({
+      type: addr.type, fullName: addr.fullName, phone: addr.phone,
+      line1: addr.line1, line2: addr.line2 ?? "",
+      city: addr.city, state: addr.state, pincode: addr.pincode,
+      landmark: addr.landmark ?? "",
+    });
+    setEditingId(addr.id);
+    setFormError(null);
+    setShowForm(true);
+  }
+
+  function handleSave() {
+    const err = validateForm();
+    if (err) { setFormError(err); return; }
+    saveMutation.mutate(form);
+  }
+
+  if (isLoading) return (
+    <SectionShell title="Address Book">
+      <p className="text-sm text-ink/40">Loading addresses…</p>
+    </SectionShell>
+  );
+
   return (
     <SectionShell title="Address Book">
-      <div className="text-center py-12">
-        <MapPin size={36} className="mx-auto text-ink/15 mb-3" />
-        <p className="text-sm text-ink/50">Saved addresses coming soon.</p>
-        <p className="text-xs text-ink/30 mt-1">Addresses are saved automatically at checkout.</p>
-      </div>
+      {/* Address list */}
+      {addresses.length > 0 && !showForm && (
+        <div className="space-y-3 mb-5">
+          {addresses.map((addr) => (
+            <div
+              key={addr.id}
+              className={`border-2 rounded-xl p-4 ${addr.isDefault ? "border-leaf bg-leaf/5" : "border-ink/10"}`}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap mb-1">
+                    <span className="font-medium text-sm text-ink">{addr.fullName}</span>
+                    <span className="text-xs bg-ink/8 text-ink/60 px-2 py-0.5 rounded-full">{addr.type}</span>
+                    {addr.isDefault && (
+                      <span className="text-xs bg-leaf/10 text-leaf px-2 py-0.5 rounded-full flex items-center gap-1">
+                        <Star size={9} /> Default
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm text-ink/60">
+                    {addr.line1}{addr.line2 ? `, ${addr.line2}` : ""}{addr.landmark ? `, ${addr.landmark}` : ""}
+                  </p>
+                  <p className="text-sm text-ink/60">{addr.city}, {addr.state} — {addr.pincode}</p>
+                  <p className="text-xs text-ink/40 mt-0.5">📞 {addr.phone}</p>
+                </div>
+                <div className="flex flex-col gap-1.5 shrink-0">
+                  <button onClick={() => openEdit(addr)} className="text-xs text-leaf hover:underline flex items-center gap-1">
+                    <Pencil size={11} /> Edit
+                  </button>
+                  {!addr.isDefault && (
+                    <button
+                      onClick={() => defaultMutation.mutate(addr.id)}
+                      disabled={defaultMutation.isPending}
+                      className="text-xs text-ink/50 hover:text-ink hover:underline"
+                    >
+                      Set default
+                    </button>
+                  )}
+                  <button onClick={() => setDeleteId(addr.id)} className="text-xs text-red-400 hover:text-red-600 flex items-center gap-1">
+                    <Trash2 size={11} /> Delete
+                  </button>
+                </div>
+              </div>
+
+              {/* Delete confirm */}
+              {deleteId === addr.id && (
+                <div className="mt-3 border border-red-200 bg-red-50 rounded-lg p-3">
+                  <p className="text-xs text-red-700 font-medium mb-2">Delete this address?</p>
+                  {deleteErr && <p className="text-xs text-red-600 mb-2">{deleteErr}</p>}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => deleteMutation.mutate(addr.id)}
+                      disabled={deleteMutation.isPending}
+                      className="bg-red-500 text-white text-xs font-medium rounded px-3 py-1.5 hover:bg-red-600 disabled:opacity-50"
+                    >
+                      {deleteMutation.isPending ? "Deleting…" : "Delete"}
+                    </button>
+                    <button
+                      onClick={() => { setDeleteId(null); setDeleteErr(null); }}
+                      className="border border-ink/10 text-ink text-xs font-medium rounded px-3 py-1.5 hover:bg-ink/5"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Empty state */}
+      {addresses.length === 0 && !showForm && (
+        <div className="text-center py-8 mb-4">
+          <MapPin size={32} className="mx-auto text-ink/15 mb-2" />
+          <p className="text-sm text-ink/50">No saved addresses yet.</p>
+        </div>
+      )}
+
+      {/* Add / Edit form */}
+      {showForm && (
+        <div className="border border-ink/10 rounded-xl p-5 mb-4">
+          <h3 className="font-medium text-sm text-ink mb-4">
+            {editingId ? "Edit Address" : "New Address"}
+          </h3>
+          {formError && (
+            <div className="mb-3 text-sm text-red-600 bg-red-50 rounded-lg p-3">{formError}</div>
+          )}
+          <div className="grid sm:grid-cols-2 gap-3">
+            {(([
+              { key: "fullName", label: "Full Name *",      col2: true,  placeholder: "Recipient's full name" },
+              { key: "phone",    label: "Mobile *",         col2: true,  placeholder: "10-digit mobile" },
+              { key: "line1",    label: "Address Line 1 *", col2: true,  placeholder: "House/flat/street" },
+              { key: "line2",    label: "Address Line 2",   col2: true,  placeholder: "Colony/locality (optional)" },
+              { key: "landmark", label: "Landmark",         col2: true,  placeholder: "Near/opposite (optional)" },
+              { key: "city",     label: "City *",           col2: false, placeholder: "City" },
+              { key: "pincode",  label: "Pincode *",        col2: false, placeholder: "6-digit pincode", maxLength: 6 },
+            ]) as { key: keyof typeof emptyAddrForm; label: string; col2: boolean; placeholder: string; maxLength?: number }[])
+            .map(({ key, label, col2, placeholder, maxLength }) => (
+              <div key={key} className={col2 ? "sm:col-span-2" : ""}>
+                <label className="block text-xs text-ink/50 mb-1">{label}</label>
+                <input
+                  value={form[key]}
+                  onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
+                  placeholder={placeholder}
+                  maxLength={maxLength}
+                  className="w-full rounded-lg border border-ink/15 focus:border-leaf px-3 py-2 text-sm outline-none transition-colors"
+                />
+              </div>
+            ))}
+            <div>
+              <label className="block text-xs text-ink/50 mb-1">State *</label>
+              <select
+                value={form.state}
+                onChange={(e) => setForm((f) => ({ ...f, state: e.target.value }))}
+                className="w-full rounded-lg border border-ink/15 focus:border-leaf px-3 py-2 text-sm outline-none transition-colors bg-white"
+              >
+                <option value="">Select state</option>
+                {INDIAN_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-ink/50 mb-1">Type</label>
+              <select
+                value={form.type}
+                onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))}
+                className="w-full rounded-lg border border-ink/15 focus:border-leaf px-3 py-2 text-sm outline-none transition-colors bg-white"
+              >
+                <option value="HOME">Home</option>
+                <option value="WORK">Work</option>
+                <option value="OTHER">Other</option>
+              </select>
+            </div>
+          </div>
+          <div className="flex gap-3 mt-4">
+            <button
+              onClick={handleSave}
+              disabled={saveMutation.isPending}
+              className="rounded-lg bg-leaf text-white text-sm font-medium px-5 py-2.5 hover:opacity-90 disabled:opacity-50"
+            >
+              {saveMutation.isPending ? "Saving…" : editingId ? "Update" : "Save Address"}
+            </button>
+            <button
+              onClick={() => { setShowForm(false); setEditingId(null); setFormError(null); }}
+              className="rounded-lg border border-ink/10 text-ink text-sm px-5 py-2.5 hover:bg-ink/5"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {!showForm && (
+        <button
+          onClick={openAdd}
+          className="flex items-center gap-2 text-sm text-leaf font-medium hover:underline"
+        >
+          <Plus size={14} /> Add new address
+        </button>
+      )}
     </SectionShell>
   );
 }

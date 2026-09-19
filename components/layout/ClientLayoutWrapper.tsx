@@ -10,9 +10,11 @@ const NO_CAROUSEL_PATHS = [
   "/contact",
   "/account",
   "/admin",
+  "/cart",
   "/checkout",
+  "/order-confirmation",
   "/login",
-  "/products",   // product listing and detail pages (starts-with check below)
+  "/products",
 ];
 
 export default function ClientLayoutWrapper({ children }: { children: React.ReactNode }) {
