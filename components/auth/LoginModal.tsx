@@ -39,7 +39,7 @@ const RESEND_SECONDS = 30;
  * New users see a short name/email step; returning users close straight into session.
  */
 export function LoginModal() {
-  const { isLoginModalOpen, closeLoginModal } = useUiStore();
+  const { isLoginModalOpen, closeLoginModal, loginNotice } = useUiStore();
   const router = useRouter();
   const [step, setStep] = useState<ModalStep>("phone");
   const [phone, setPhone] = useState("");
@@ -183,6 +183,11 @@ export function LoginModal() {
                 {/* Form content — min-h is shorter on small phones */}
                 <div className="relative z-10 flex flex-col justify-end p-4 sm:p-6 min-h-[420px] sm:min-h-[520px]">
                   <div className="bg-white rounded-xl p-5 sm:p-8 shadow-lg">
+                    {loginNotice && (
+                      <p role="status" className="mb-4 rounded-lg bg-amber-50 px-3 py-2 text-center text-sm text-amber-800">
+                        {loginNotice}
+                      </p>
+                    )}
 
                     {/* ── Phone step ── */}
                     {step === "phone" && (

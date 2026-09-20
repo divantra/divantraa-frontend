@@ -1,5 +1,6 @@
 import axios from "axios";
 import { useAuthStore } from "@/store/useAuthStore";
+import { useUiStore } from "@/store/useUiStore";
 
 /**
  * Base URL strategy:
@@ -58,7 +59,13 @@ api.interceptors.response.use(
         pendingQueue = [];
         return api(originalRequest);
       } catch (refreshError) {
+        // Sessions last 30 minutes of inactivity. If a signed-in user hits this,
+        // tell them why they were signed out instead of failing silently.
+        const wasSignedIn = !!useAuthStore.getState().user;
         useAuthStore.getState().clearSession();
+        if (wasSignedIn && typeof window !== "undefined") {
+          useUiStore.getState().openLoginModal("Your session expired after 30 minutes of inactivity. Please sign in again.");
+        }
         pendingQueue = [];
         return Promise.reject(refreshError);
       } finally {

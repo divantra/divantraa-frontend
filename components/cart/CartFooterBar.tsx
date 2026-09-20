@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useCartStore } from "@/store/useCartStore";
 import Image from "next/image";
 import { ArrowRight , ShoppingCart } from "lucide-react";
@@ -10,8 +11,12 @@ export function CartFooterBar() {
   const itemCount = useCartStore((s) => s.itemCount());
   const total = useCartStore((s) => s.totalPrice());
   const openCart = useCartStore((s) => s.openCart);
+  const isCartOpen = useCartStore((s) => s.isOpen);
+  const pathname = usePathname();
 
-  if (itemCount === 0) return null;
+  // Hide while the cart drawer is open so it never covers the Checkout button.
+  const onCheckoutFlow = /^\/(checkout|cart|order-confirmation)/.test(pathname ?? "");
+  if (itemCount === 0 || isCartOpen || onCheckoutFlow) return null;
 
   const visibleItems = items.slice(0, 2);
   const remainingCount = itemCount - visibleItems.length;
