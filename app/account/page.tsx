@@ -22,7 +22,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   User, Package, MapPin, HelpCircle, LogOut, AlertTriangle,
   Pencil, Check, X, ChevronDown, ChevronUp, ShieldCheck,
-  Plus, Trash2, Star, Banknote,
+  Plus, Trash2, Star, Banknote, Truck,
 } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useLogout, useUpdateProfile, useDeactivateAccount } from "@/hooks/useAuth";
@@ -43,16 +43,31 @@ interface OrderItem {
   images: string[];
 }
 
+interface StatusHistoryEntry {
+  id:        string;
+  status:    string;
+  note:      string | null;
+  createdAt: string;
+}
+
 interface Order {
   id:              string;
   orderNumber:     string | null;
   status:          string;
   paymentMethod:   string;
+  paymentStatus:   string;
   subtotal:        number;
   shippingFee:     number;
   codFee:          number;
   total:           number;
   createdAt:       string;
+  confirmedAt:     string | null;
+  shippedAt:       string | null;
+  deliveredAt:     string | null;
+  cancelledAt:     string | null;
+  cancelReason:    string | null;
+  trackingNumber:  string | null;
+  trackingCarrier: string | null;
   shippingName:    string;
   shippingLine1:   string;
   shippingLine2:   string | null;
@@ -60,6 +75,7 @@ interface Order {
   shippingState:   string;
   shippingPincode: string;
   items:           OrderItem[];
+  statusHistory:   StatusHistoryEntry[];
 }
 
 interface Address {
@@ -86,7 +102,7 @@ const STATUS_META: Record<string, { label: string; color: string; step: number; 
   SHIPPED:    { label: "Shipped",       color: "bg-cyan-100 text-cyan-700",     step: 3 },
   DELIVERED:  { label: "Delivered",     color: "bg-green-100 text-green-700",   step: 4 },
   CANCELLED:  { label: "Cancelled",     color: "bg-red-100 text-red-600",       step: -1 },
-  REFUNDED:   { label: "Refunded",      color: "bg-gray-100 text-gray-600",     step: -1 },
+  REFUNDED:   { label: "Refunded",      color: "bg-ink/10 text-ink/60",         step: -1 },
 };
 
 const TRACKING_STEPS = ["Placed", "Confirmed", "Processing", "Shipped", "Delivered"];
@@ -214,18 +230,28 @@ function AccountPageInner() {
         </aside>
 
         {/* ── Mobile tab strip ────────────────────────────── */}
-        <div className="md:hidden w-full mb-4 flex gap-2 overflow-x-auto pb-1">
-          {NAV.map(({ tab: t, icon, label }) => (
-            <button
-              key={t}
-              onClick={() => goTab(t)}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
-                tab === t ? "bg-leaf text-white" : "bg-white border border-ink/10 text-ink/60"
-              }`}
-            >
-              {icon} {label}
-            </button>
-          ))}
+        <div className="md:hidden w-full mb-4">
+          <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+            {NAV.map(({ tab: t, icon, label }) => (
+              <button
+                key={t}
+                onClick={() => goTab(t)}
+                className={`flex items-center gap-1.5 px-4 py-2.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors min-h-[44px] ${
+                  tab === t ? "bg-leaf text-white" : "bg-white border border-ink/10 text-ink/60"
+                }`}
+              >
+                {icon} {label}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={() => logout.mutate()}
+            disabled={logout.isPending}
+            className="mt-2.5 flex items-center gap-2 text-sm text-red-400 hover:text-red-600 font-medium px-1 min-h-[44px]"
+          >
+            <LogOut size={15} />
+            {logout.isPending ? "Logging out…" : "Log out"}
+          </button>
         </div>
 
         {/* ── Content ─────────────────────────────────────── */}
@@ -365,9 +391,10 @@ function ProfileSection({ user, updateProfile }: { user: any; updateProfile: any
 // ── Orders section ─────────────────────────────────────────────
 
 function OrdersSection() {
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [expandedId,   setExpandedId]   = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
-  const [cancelError, setCancelError] = useState<string | null>(null);
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelError,  setCancelError]  = useState<string | null>(null);
   const qc = useQueryClient();
 
   const { data: orders, isLoading, isError } = useQuery<Order[]>({
@@ -377,14 +404,17 @@ function OrdersSection() {
   });
 
   const cancelOrder = useMutation({
-    mutationFn: (orderId: string) => api.post(`/orders/${orderId}/cancel`),
+    mutationFn: ({ orderId, reason }: { orderId: string; reason: string }) =>
+      api.post(`/orders/${orderId}/cancel`, { cancelReason: reason }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["my-orders"] });
-      setCancellingId(null);
-      setCancelError(null);
+      setCancellingId(null); setCancelReason(""); setCancelError(null);
     },
     onError: (err) => setCancelError(getAxiosErrorMessage(err)),
   });
+
+  const fmtDate = (d: string | null) =>
+    d ? new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short" }) : null;
 
   if (isLoading) return <SectionShell title="Order History"><p className="text-sm text-ink/40">Loading orders…</p></SectionShell>;
 
@@ -404,9 +434,18 @@ function OrdersSection() {
     <SectionShell title={`Order History (${orders.length})`}>
       <div className="space-y-4">
         {orders.map((order) => {
-          const meta    = STATUS_META[order.status] ?? STATUS_META.PENDING;
-          const isOpen  = expandedId === order.id;
+          const meta      = STATUS_META[order.status] ?? STATUS_META.PENDING;
+          const isOpen    = expandedId === order.id;
           const displayId = order.orderNumber ?? `#${order.id.slice(0, 8).toUpperCase()}`;
+
+          // Build timeline step dates from the actual timestamps
+          const stepDates: (string | null)[] = [
+            fmtDate(order.createdAt),
+            fmtDate(order.confirmedAt),
+            null,
+            fmtDate(order.shippedAt),
+            fmtDate(order.deliveredAt),
+          ];
 
           return (
             <div key={order.id} className="border border-ink/8 rounded-xl overflow-hidden">
@@ -415,25 +454,21 @@ function OrdersSection() {
                 onClick={() => setExpandedId(isOpen ? null : order.id)}
                 className="w-full flex items-center justify-between px-4 py-4 hover:bg-cream/50 transition-colors text-left"
               >
-                <div className="flex items-center gap-4">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <p className="text-xs text-leaf font-semibold">{displayId}</p>
-                      {order.paymentMethod === "COD" && (
-                        <span className="text-[10px] bg-amber-50 text-amber-600 border border-amber-200 px-1.5 py-0.5 rounded font-medium flex items-center gap-0.5">
-                          <Banknote size={9} /> COD
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-sm font-medium text-ink mt-0.5">
-                      {order.items.length} item{order.items.length !== 1 ? "s" : ""} · ₹{Number(order.total).toFixed(0)}
-                    </p>
-                    <p className="text-xs text-ink/40 mt-0.5">
-                      {new Date(order.createdAt).toLocaleDateString("en-IN", {
-                        day: "numeric", month: "short", year: "numeric",
-                      })}
-                    </p>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs text-leaf font-semibold font-mono">{displayId}</p>
+                    {order.paymentMethod === "COD" && (
+                      <span className="text-[10px] bg-amber-50 text-amber-600 border border-amber-200 px-1.5 py-0.5 rounded font-medium flex items-center gap-0.5">
+                        <Banknote size={9} /> COD
+                      </span>
+                    )}
                   </div>
+                  <p className="text-sm font-medium text-ink mt-0.5">
+                    {order.items.length} item{order.items.length !== 1 ? "s" : ""} · ₹{Number(order.total).toFixed(0)}
+                  </p>
+                  <p className="text-xs text-ink/40 mt-0.5">
+                    {new Date(order.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                  </p>
                 </div>
                 <div className="flex items-center gap-3">
                   <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${meta.color}`}>
@@ -445,84 +480,108 @@ function OrdersSection() {
 
               {/* Expanded detail */}
               {isOpen && (
-                <div className="border-t border-ink/5 px-4 py-4 bg-ink/[0.01]">
+                <div className="border-t border-ink/5 px-4 py-4 bg-ink/[0.01] space-y-5">
 
-                  {/* Tracking stepper */}
+                  {/* Tracking stepper (with dates) */}
                   {meta.step >= 0 && (
-                    <div className="mb-5">
+                    <div>
                       <p className="text-xs font-semibold text-ink/40 uppercase tracking-wider mb-3">Tracking</p>
-                      <div className="flex items-center gap-0">
-                        {TRACKING_STEPS.map((stepLabel, i) => {
-                          const done    = i <= meta.step;
-                          const current = i === meta.step;
-                          return (
-                            <div key={stepLabel} className="flex-1 flex flex-col items-center">
-                              <div className={`h-2.5 w-2.5 rounded-full border-2 z-10 ${
-                                done ? "bg-leaf border-leaf" : "bg-white border-ink/20"
-                              } ${current ? "ring-2 ring-leaf/30 ring-offset-1" : ""}`} />
-                              <p className={`text-[10px] mt-1.5 text-center leading-tight ${
-                                done ? "text-leaf font-medium" : "text-ink/30"
-                              }`}>{stepLabel}</p>
-                            </div>
-                          );
-                        })}
-                      </div>
-                      <div className="flex mt-[-22px] mb-2 px-[5%]">
-                        {TRACKING_STEPS.slice(0, -1).map((_, i) => (
-                          <div key={i} className={`flex-1 h-0.5 ${i < meta.step ? "bg-leaf" : "bg-ink/10"}`} />
-                        ))}
+                      <div className="relative">
+                        <div className="flex justify-between mb-1">
+                          {TRACKING_STEPS.map((stepLabel, i) => {
+                            const done    = i <= meta.step;
+                            const current = i === meta.step;
+                            return (
+                              <div key={stepLabel} className="flex flex-col items-center flex-1">
+                                <div className={`h-2.5 w-2.5 rounded-full border-2 z-10 ${
+                                  done ? "bg-leaf border-leaf" : "bg-white border-ink/20"
+                                } ${current ? "ring-2 ring-leaf/30 ring-offset-1" : ""}`} />
+                                <p className={`text-[9px] mt-1.5 text-center leading-tight ${done ? "text-leaf font-medium" : "text-ink/30"}`}>
+                                  {stepLabel}
+                                </p>
+                                {stepDates[i] && <p className="text-[9px] text-ink/30 text-center mt-0.5">{stepDates[i]}</p>}
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <div className="absolute top-[5px] left-[5%] right-[5%] flex -z-0">
+                          {TRACKING_STEPS.slice(0, -1).map((_, i) => (
+                            <div key={i} className={`flex-1 h-0.5 ${i < meta.step ? "bg-leaf" : "bg-ink/10"}`} />
+                          ))}
+                        </div>
                       </div>
                     </div>
                   )}
 
-                  {/* Items */}
-                  <p className="text-xs font-semibold text-ink/40 uppercase tracking-wider mb-3">Items</p>
-                  <div className="space-y-3 mb-4">
-                    {order.items.map((item) => (
-                      <div key={item.id} className="flex gap-3 items-start">
-                        <div className="h-14 w-14 rounded-lg bg-ink/5 overflow-hidden relative shrink-0">
-                          {item.images?.[0] ? (
-                            <Image src={item.images[0]} alt={item.title} fill className="object-cover" />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <Package size={18} className="text-ink/20" />
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-ink truncate">{item.title}</p>
-                          <p className="text-xs text-ink/50">{item.variantTitle}</p>
-                          <p className="text-xs text-ink/40 font-mono">{item.sku}</p>
-                        </div>
-                        <div className="text-right shrink-0">
-                          <p className="text-sm font-medium text-ink">₹{Number(item.price) * item.quantity}</p>
-                          <p className="text-xs text-ink/40">Qty {item.quantity}</p>
-                        </div>
+                  {/* Tracking number (when shipped) */}
+                  {order.trackingNumber && (
+                    <div className="flex items-start gap-3 p-3 bg-cyan-50 border border-cyan-200 rounded-xl">
+                      <Truck size={16} className="text-cyan-600 mt-0.5 shrink-0" />
+                      <div>
+                        <p className="text-xs font-semibold text-cyan-700">Shipment Tracking</p>
+                        <p className="text-sm font-mono text-cyan-900">{order.trackingNumber}</p>
+                        {order.trackingCarrier && <p className="text-xs text-cyan-600">via {order.trackingCarrier}</p>}
                       </div>
-                    ))}
+                    </div>
+                  )}
+
+                  {/* Cancellation reason */}
+                  {order.cancelReason && (
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-xl">
+                      <p className="text-xs font-semibold text-red-600 mb-1">Cancellation Reason</p>
+                      <p className="text-sm text-red-700">{order.cancelReason}</p>
+                    </div>
+                  )}
+
+                  {/* Items */}
+                  <div>
+                    <p className="text-xs font-semibold text-ink/40 uppercase tracking-wider mb-3">Items</p>
+                    <div className="space-y-3">
+                      {order.items.map((item) => (
+                        <div key={item.id} className="flex gap-3 items-start">
+                          <div className="h-14 w-14 rounded-lg bg-ink/5 overflow-hidden relative shrink-0">
+                            {item.images?.[0]
+                              ? <Image src={item.images[0]} alt={item.title} fill className="object-cover" />
+                              : <div className="w-full h-full flex items-center justify-center"><Package size={18} className="text-ink/20" /></div>
+                            }
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-ink truncate">{item.title}</p>
+                            <p className="text-xs text-ink/50">{item.variantTitle}</p>
+                            <p className="text-xs text-ink/40 font-mono">{item.sku}</p>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="text-sm font-medium text-ink">₹{Number(item.price) * item.quantity}</p>
+                            <p className="text-xs text-ink/40">Qty {item.quantity}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
 
                   {/* Price summary */}
                   <div className="border-t border-ink/5 pt-3 space-y-1 text-sm">
-                    <div className="flex justify-between text-ink/60">
-                      <span>Subtotal</span><span>₹{Number(order.subtotal).toFixed(0)}</span>
-                    </div>
+                    <div className="flex justify-between text-ink/60"><span>Subtotal</span><span>₹{Number(order.subtotal).toFixed(0)}</span></div>
                     <div className="flex justify-between text-ink/60">
                       <span>Shipping</span>
                       <span>{Number(order.shippingFee) === 0 ? <span className="text-green-600">Free</span> : `₹${Number(order.shippingFee)}`}</span>
                     </div>
                     {Number(order.codFee) > 0 && (
-                      <div className="flex justify-between text-ink/60">
-                        <span>COD Charge</span><span>₹{Number(order.codFee)}</span>
-                      </div>
+                      <div className="flex justify-between text-ink/60"><span>COD Charge</span><span>₹{Number(order.codFee)}</span></div>
                     )}
                     <div className="flex justify-between font-semibold text-ink border-t border-ink/5 pt-1 mt-1">
                       <span>Total</span><span>₹{Number(order.total).toFixed(0)}</span>
                     </div>
+                    <div className="flex justify-between text-xs text-ink/40 pt-0.5">
+                      <span>Payment</span>
+                      <span className={order.paymentStatus === "PAID" ? "text-green-600 font-medium" : ""}>
+                        {order.paymentMethod} · {order.paymentStatus === "PAID" ? "Paid" : order.paymentStatus === "PENDING" ? "Pay on delivery" : order.paymentStatus}
+                      </span>
+                    </div>
                   </div>
 
                   {/* Delivery address */}
-                  <div className="mt-3 p-3 bg-ink/[0.03] rounded-lg text-xs text-ink/50">
+                  <div className="p-3 bg-ink/[0.03] rounded-lg text-xs text-ink/50">
                     <p className="font-medium text-ink/70 mb-0.5">Deliver to: {order.shippingName}</p>
                     <p>{order.shippingLine1}{order.shippingLine2 ? `, ${order.shippingLine2}` : ""}</p>
                     <p>{order.shippingCity}, {order.shippingState} — {order.shippingPincode}</p>
@@ -530,33 +589,36 @@ function OrdersSection() {
 
                   {/* Cancel order */}
                   {meta.cancellable && (
-                    <div className="mt-4">
+                    <div>
                       {cancellingId === order.id ? (
                         <div className="border border-red-200 bg-red-50 rounded-xl p-4">
                           <p className="text-sm text-red-700 font-medium mb-1">Cancel this order?</p>
                           <p className="text-xs text-red-500 mb-3">This cannot be undone. Stock will be restored.</p>
+                          <textarea
+                            value={cancelReason}
+                            onChange={e => setCancelReason(e.target.value)}
+                            placeholder="Reason for cancelling (optional)…"
+                            rows={2}
+                            className="w-full text-xs border border-red-200 rounded-lg px-3 py-2 mb-3 bg-white focus:outline-none focus:ring-1 focus:ring-red-300 resize-none"
+                          />
                           {cancelError && <p className="text-xs text-red-600 mb-2">{cancelError}</p>}
                           <div className="flex gap-2">
                             <button
-                              onClick={() => cancelOrder.mutate(order.id)}
+                              onClick={() => cancelOrder.mutate({ orderId: order.id, reason: cancelReason || "Cancelled by customer" })}
                               disabled={cancelOrder.isPending}
                               className="bg-red-500 text-white text-xs font-medium rounded-lg px-4 py-2 hover:bg-red-600 disabled:opacity-50"
                             >
                               {cancelOrder.isPending ? "Cancelling…" : "Yes, cancel"}
                             </button>
-                            <button
-                              onClick={() => { setCancellingId(null); setCancelError(null); }}
-                              className="border border-ink/10 text-ink text-xs font-medium rounded-lg px-4 py-2 hover:bg-ink/5"
-                            >
+                            <button onClick={() => { setCancellingId(null); setCancelReason(""); setCancelError(null); }}
+                              className="border border-ink/10 text-ink text-xs font-medium rounded-lg px-4 py-2 hover:bg-ink/5">
                               Keep order
                             </button>
                           </div>
                         </div>
                       ) : (
-                        <button
-                          onClick={() => { setCancellingId(order.id); setCancelError(null); }}
-                          className="text-sm text-red-400 hover:text-red-600 font-medium hover:underline"
-                        >
+                        <button onClick={() => { setCancellingId(order.id); setCancelError(null); }}
+                          className="text-sm text-red-400 hover:text-red-600 font-medium hover:underline">
                           Cancel order
                         </button>
                       )}
@@ -843,8 +905,8 @@ function HelpSection() {
       <div className="space-y-4 text-sm text-ink/70">
         <p>For any queries, reach us at:</p>
         <div className="space-y-2">
-          <p>📧 <a href="mailto:support@divantraa.com" className="text-leaf hover:underline">support@divantraa.com</a></p>
-          <p>📞 <a href="tel:+918115352152" className="text-leaf hover:underline">+91 8115352152</a></p>
+          <p>📧 <a href="mailto:divantraa@rediffmail.com" className="text-leaf hover:underline">divantraa@rediffmail.com</a></p>
+          <p>📞 <a href="tel:+919008301490" className="text-leaf hover:underline">+91 9008301490</a></p>
         </div>
         <div className="border-t border-ink/5 pt-4">
           <p className="font-medium text-ink mb-2">Common questions</p>

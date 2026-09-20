@@ -30,7 +30,7 @@ export default function ProductsContent() {
     <main className="max-w-7xl mx-auto px-4 sm:px-6 py-10 min-h-[60vh]">
       <div className="flex items-center justify-between mb-6">
         <h1 className="font-display text-2xl sm:text-3xl text-ink">
-          {category ? category.replace(/-/g, " ") : "Shop all"}
+          {category ? category.replace(/-/g, " ") : "Shop now"}
         </h1>
         <select
           value={sort}
@@ -100,7 +100,7 @@ export default function ProductsContent() {
         items-center
         gap-1.5
         rounded-bl-[16px]
-        bg-[#D99A18]
+        bg-gold
         px-3
         py-2.5
         text-white
@@ -178,7 +178,7 @@ export default function ProductsContent() {
             items-center
             justify-center
             text-xs
-            text-gray-300
+            text-ink/30
           "
         >
           No image
@@ -196,7 +196,7 @@ export default function ProductsContent() {
       absolute
       right-3
       top-[40%]
-      z-40
+      z-10
     "
   >
     <AddToCartButton
@@ -238,7 +238,7 @@ export default function ProductsContent() {
           text-[15px]
           font-semibold
           leading-[1.3]
-          text-gray-900
+          text-ink
 
           sm:text-[16px]
         "
@@ -256,7 +256,7 @@ export default function ProductsContent() {
             mt-1
             truncate
             text-[11px]
-            text-gray-400
+            text-ink/40
           "
         >
           {Object.values(
@@ -277,10 +277,10 @@ export default function ProductsContent() {
       >
         <Star
           size={15}
-          fill="#FFB000"
+          fill="currentColor"
           className="
             shrink-0
-            text-[#FFB000]
+            text-gold
           "
           strokeWidth={1.5}
         />
@@ -289,7 +289,7 @@ export default function ProductsContent() {
           className="
             text-[12px]
             font-semibold
-            text-gray-900
+            text-ink
           "
         >
           4.8
@@ -299,7 +299,7 @@ export default function ProductsContent() {
           className="
             truncate
             text-[11px]
-            text-gray-500
+            text-ink/50
           "
         >
           (1275 reviews)
@@ -321,7 +321,7 @@ export default function ProductsContent() {
             text-[21px]
             font-bold
             leading-none
-            text-gray-900
+            text-ink
           "
         >
           ₹{variant.price}
@@ -331,7 +331,7 @@ export default function ProductsContent() {
           <span
             className="
               text-[12px]
-              text-gray-400
+              text-ink/40
               line-through
             "
           >
@@ -350,7 +350,7 @@ export default function ProductsContent() {
           items-center
           gap-1
           rounded-lg
-          bg-[#EAF4E9]
+          bg-leaf/10
           px-2
           py-1.5
         "
@@ -363,7 +363,7 @@ export default function ProductsContent() {
           className="
             text-[10px]
             font-bold
-            text-[#16806F]
+            text-forest
 
             sm:text-[11px]
           "
@@ -375,7 +375,7 @@ export default function ProductsContent() {
           className="
             text-[10px]
             font-semibold
-            text-[#16806F]
+            text-forest
 
             sm:text-[11px]
           "
@@ -391,7 +391,7 @@ export default function ProductsContent() {
           className="
             hidden
             text-[10px]
-            text-[#16806F]
+            text-forest
 
             sm:inline
           "
@@ -437,7 +437,7 @@ function AddToCartButton({ item }: { item: Omit<CartLine, "quantity"> }) {
     return (
       <div className="
         flex h-[40px] min-w-[88px] items-center justify-between
-        overflow-hidden rounded-[20px] bg-[#205F4E] shadow-md
+        overflow-hidden rounded-[20px] bg-forest shadow-md
       ">
         <button
           onClick={(e) => {
@@ -472,10 +472,10 @@ function AddToCartButton({ item }: { item: Omit<CartLine, "quantity"> }) {
       disabled={loading}
       className="
         flex h-[40px] min-w-[88px] items-center justify-center gap-1.5
-        rounded-[20px] bg-[#205F4E] px-3.5
+        rounded-[20px] bg-forest px-3.5
         text-xs font-semibold text-white shadow-md
         transition-all duration-200
-        hover:bg-[#184D3F] hover:shadow-lg
+        hover:bg-leaf hover:shadow-lg
         active:scale-95
         disabled:cursor-not-allowed disabled:opacity-60
       "

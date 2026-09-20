@@ -30,9 +30,9 @@ export function WhyChooseBlock() {
   ];
 
   return (
-    <section className="bg-[#fafcfa] py-8 px-10">
+    <section className="bg-cream/40 py-8 px-10">
       <div className="text-center flex flex-col items-center justify-center gap-10">
-        <h2 className="text-3xl md:text-4xl font-bold text-[#235a45] font-serif tracking-wide">
+        <h2 className="font-display text-3xl md:text-4xl font-semibold text-forest tracking-wide">
           Why Choose Divantraa?
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
@@ -41,7 +41,6 @@ export function WhyChooseBlock() {
               key={f.title}
               className="flex flex-col items-center text-center gap-4"
             >
-              {/* Icon wrapper with fixed size */}
               <div className="h-24 w-24 flex items-center justify-center">
                 <Image
                   src={f.icon}
@@ -51,8 +50,8 @@ export function WhyChooseBlock() {
                   className="object-contain"
                 />
               </div>
-              <h3 className="text-lg font-semibold text-[#235a45]">{f.title}</h3>
-              <p className="text-sm text-[#666] max-w-xs">{f.description}</p>
+              <h3 className="font-display text-lg font-medium text-forest">{f.title}</h3>
+              <p className="text-sm text-ink/60 max-w-xs">{f.description}</p>
             </div>
           ))}
         </div>
