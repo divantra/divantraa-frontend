@@ -248,31 +248,30 @@ export function CartDrawer() {
                   {suggestions.length > 0 && (
                     <div className="mt-6">
                       <h3 className="mb-3 font-display text-lg font-semibold text-forest">You might also like</h3>
-                      <div className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2">
+                      {/* Vertical list: the whole drawer body scrolls up/down, no sideways scrolling */}
+                      <ul className="space-y-3">
                         {suggestions.map((p) => {
                           const v = getDefaultVariant(p)!;
                           const img = v.resolvedImages?.[0] ?? v.images?.[0] ?? p.images?.[0] ?? "";
                           return (
-                            <div key={p.id} className="w-[210px] shrink-0 snap-start rounded-2xl border border-ink/10 bg-white p-3">
-                              <div className="flex gap-3">
-                                <Link href={`/products/${p.slug}`} onClick={closeCart} className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-ink/5">
-                                  {img && <Image src={img} alt={p.title} fill sizes="64px" className="object-cover" />}
-                                </Link>
-                                <div className="min-w-0">
-                                  <p className="line-clamp-2 text-xs font-medium text-ink">{p.title}</p>
-                                  <p className="mt-1 text-sm font-bold text-ink">{rupees(Number(v.price))}</p>
-                                </div>
+                            <li key={p.id} className="flex items-center gap-3 rounded-2xl border border-ink/10 bg-white p-3 shadow-sm">
+                              <Link href={`/products/${p.slug}`} onClick={closeCart} className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-ink/5">
+                                {img && <Image src={img} alt={p.title} fill sizes="64px" className="object-cover" />}
+                              </Link>
+                              <div className="min-w-0 flex-1">
+                                <p className="line-clamp-2 text-sm font-medium leading-snug text-ink">{p.title}</p>
+                                <p className="mt-1 text-sm font-bold text-ink">{rupees(Number(v.price))}</p>
                               </div>
                               <button
                                 onClick={() => addSuggestion(p)}
-                                className="mt-3 flex w-full items-center justify-center gap-1 rounded-lg border border-forest py-1.5 text-xs font-semibold text-forest hover:bg-forest/5"
+                                className="flex shrink-0 items-center gap-1 rounded-lg border border-forest px-3.5 py-2 text-xs font-semibold text-forest hover:bg-forest/5"
                               >
                                 <Plus size={13} /> Add
                               </button>
-                            </div>
+                            </li>
                           );
                         })}
-                      </div>
+                      </ul>
                     </div>
                   )}
                 </div>
