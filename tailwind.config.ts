@@ -5,15 +5,15 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Divantraa-style earthy farm palette
-        cream: "#FBF6EE",
-        forest: "#1F3D2B",
-        leaf: "#3D6B45",
-        clay: "#C77B45",
-        gold: "#D3A24A",
-        ink: "#241F1B",
-        white: "#FFFFFF",
-        black: "#000000",
+        // Divantraa × Anveshan aligned palette
+        cream:  "#F5F0E8",   // warm off-white — section backgrounds
+        forest: "#00584B", // Anveshan primary brand green — footer, promo bar, key accents
+        leaf:   "#007A6B",   // interactive teal — buttons, links, focus rings
+        clay:   "#C77B45",   // earthy warm accent — badges, CTAs
+        gold:   "#D3A24A",   // earthy gold — highlights, footer headings
+        ink:    "#242424",   // Anveshan foreground — headings and dark text
+        white:  "#FFFFFF",
+        black:  "#000000",
       },
       fontFamily: {
         display: ["var(--font-display)"],

@@ -52,7 +52,7 @@ function getCategoryIcon(
   const props = {
     size,
     strokeWidth: 1.5,
-    className: "text-[#1F3D2B]",
+    className: "text-forest",
   } as const;
 
   if (slug.includes("ghee")) {
@@ -376,7 +376,7 @@ export function CategoryProductSlider() {
      ============================================================ */
 
   return (
-    <section className="w-full overflow-hidden bg-[#f9f7f4] pt-0 pb-8">
+    <section className="w-full overflow-hidden bg-cream/30 pt-0 pb-8">
 
       {/* ========================================================
           CATEGORY TABS
@@ -386,7 +386,7 @@ export function CategoryProductSlider() {
         className="
           w-full
           border-b
-          border-gray-100
+          border-ink/8
           bg-white
         "
       >
@@ -418,7 +418,7 @@ export function CategoryProductSlider() {
               <LayoutGrid
                 size={34}
                 strokeWidth={1.5}
-                className="text-[#1F3D2B]"
+                className="text-forest"
               />
             }
             active={
@@ -495,14 +495,14 @@ export function CategoryProductSlider() {
             justify-center
             rounded-full
             border
-            border-gray-200
+            border-ink/10
             bg-white
             shadow-lg
             transition-all
             lg:flex
             ${
               canPrev
-                ? "cursor-pointer text-[#205F4E] hover:scale-105 hover:shadow-xl"
+                ? "cursor-pointer text-forest hover:scale-105 hover:shadow-xl"
                 : "cursor-default opacity-0"
             }
           `}
@@ -537,14 +537,14 @@ export function CategoryProductSlider() {
             justify-center
             rounded-full
             border
-            border-gray-200
+            border-ink/10
             bg-white
             shadow-lg
             transition-all
             lg:flex
             ${
               canNext
-                ? "cursor-pointer text-[#205F4E] hover:scale-105 hover:shadow-xl"
+                ? "cursor-pointer text-forest hover:scale-105 hover:shadow-xl"
                 : "cursor-default opacity-0"
             }
           `}
@@ -565,7 +565,7 @@ export function CategoryProductSlider() {
               py-12
               text-center
               text-sm
-              text-gray-400
+              text-ink/40
             "
           >
             Loading products…
@@ -586,7 +586,7 @@ export function CategoryProductSlider() {
               py-12
               text-center
               text-sm
-              text-gray-400
+              text-ink/40
             "
           >
             No products in this
@@ -668,7 +668,7 @@ export function CategoryProductSlider() {
                       overflow-hidden
                       rounded-[16px]
                       border
-                      border-gray-200
+                      border-ink/10
                       bg-white
                       shadow-sm
                       transition-all
@@ -703,7 +703,7 @@ export function CategoryProductSlider() {
                           items-center
                           gap-1.5
                           rounded-bl-[16px]
-                          bg-[#D99A18]
+                          bg-gold
                           px-3
                           py-2.5
                           text-white
@@ -782,7 +782,7 @@ export function CategoryProductSlider() {
                               items-center
                               justify-center
                               text-xs
-                              text-gray-300
+                              text-ink/30
                             "
                           >
                             No image
@@ -802,7 +802,7 @@ export function CategoryProductSlider() {
                         absolute
                         right-3
                         top-[43%]
-                        z-40
+                        z-10
                       "
                     >
                       <AddToCartButton
@@ -861,7 +861,7 @@ export function CategoryProductSlider() {
                             text-[15px]
                             font-semibold
                             leading-[1.3]
-                            text-gray-900
+                            text-ink
                             sm:text-[16px]
                           "
                         >
@@ -881,7 +881,7 @@ export function CategoryProductSlider() {
                               mt-1
                               truncate
                               text-[11px]
-                              text-gray-400
+                              text-ink/40
                             "
                           >
                             {Object.values(
@@ -905,10 +905,10 @@ export function CategoryProductSlider() {
 
                           <Star
                             size={16}
-                            fill="#FFB000"
+                            fill="currentColor"
                             className="
                               shrink-0
-                              text-[#FFB000]
+                              text-gold
                             "
                             strokeWidth={
                               1.5
@@ -919,7 +919,7 @@ export function CategoryProductSlider() {
                             className="
                               text-[12px]
                               font-semibold
-                              text-gray-900
+                              text-ink
                             "
                           >
                             4.8
@@ -929,7 +929,7 @@ export function CategoryProductSlider() {
                             className="
                               truncate
                               text-[11px]
-                              text-gray-500
+                              text-ink/50
                             "
                           >
                             (1275 reviews)
@@ -953,7 +953,7 @@ export function CategoryProductSlider() {
                               text-[23px]
                               font-bold
                               leading-none
-                              text-gray-900
+                              text-ink
                             "
                           >
                             ₹
@@ -966,7 +966,7 @@ export function CategoryProductSlider() {
                             <span
                               className="
                                 text-[12px]
-                                text-gray-400
+                                text-ink/40
                                 line-through
                               "
                             >
@@ -989,7 +989,7 @@ export function CategoryProductSlider() {
                             items-center
                             gap-1
                             rounded-lg
-                            bg-[#EAF4E9]
+                            bg-leaf/10
                             px-2
                             py-1.5
                           "
@@ -1007,7 +1007,7 @@ export function CategoryProductSlider() {
                             className="
                               text-[10px]
                               font-bold
-                              text-[#16806F]
+                              text-forest
                               sm:text-[11px]
                             "
                           >
@@ -1018,7 +1018,7 @@ export function CategoryProductSlider() {
                             className="
                               text-[10px]
                               font-semibold
-                              text-[#16806F]
+                              text-forest
                               sm:text-[11px]
                             "
                           >
@@ -1035,7 +1035,7 @@ export function CategoryProductSlider() {
                             className="
                               hidden
                               text-[10px]
-                              text-[#16806F]
+                              text-forest
                               sm:inline
                             "
                           >
@@ -1115,8 +1115,8 @@ function CategoryTab({
         <span
           className={`whitespace-nowrap text-[12px] transition-colors ${
             active
-              ? "font-bold text-[#1F3D2B]"
-              : "font-medium text-gray-500 group-hover:text-[#1F3D2B]"
+              ? "font-semibold text-forest"
+              : "font-medium text-ink/50 group-hover:text-forest"
           }`}
         >
           {label}
@@ -1126,7 +1126,7 @@ function CategoryTab({
         <span
           className={`h-[3px] w-[90px] rounded-full ${
             active
-              ? "bg-[#1F3D2B]"
+              ? "bg-forest"
               : "bg-transparent"
           }`}
         />
@@ -1219,7 +1219,7 @@ function AddToCartButton({
           justify-between
           overflow-hidden
           rounded-[20px]
-          bg-[#205F4E]
+          bg-forest
           shadow-md
         "
       >
@@ -1308,7 +1308,7 @@ function AddToCartButton({
         justify-center
         gap-1.5
         rounded-[20px]
-        bg-[#205F4E]
+        bg-forest
         px-3.5
         text-xs
         font-semibold
@@ -1316,7 +1316,7 @@ function AddToCartButton({
         shadow-md
         transition-all
         duration-200
-        hover:bg-[#184D3F]
+        hover:bg-leaf
         hover:shadow-lg
         active:scale-95
         disabled:cursor-not-allowed

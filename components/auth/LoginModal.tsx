@@ -156,9 +156,9 @@ export function LoginModal() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 10 }}
             transition={{ duration: 0.25, ease: "easeOut" }}
-            className="fixed inset-0 z-[61] flex items-center justify-center p-4"
+            className="fixed inset-0 z-[61] flex items-center justify-center p-4 overflow-y-auto"
           >
-            <div className="relative w-full max-w-md">
+            <div className="relative w-full max-w-md my-auto">
               <button
                 onClick={handleClose}
                 aria-label="Close"
@@ -180,9 +180,9 @@ export function LoginModal() {
                   <div className="absolute inset-0 bg-black/30" />
                 </div>
 
-                {/* Form content */}
-                <div className="relative z-10 flex flex-col justify-end p-6 min-h-[550px]">
-                  <div className="bg-white rounded-xl p-6 sm:p-8 shadow-lg">
+                {/* Form content — min-h is shorter on small phones */}
+                <div className="relative z-10 flex flex-col justify-end p-4 sm:p-6 min-h-[420px] sm:min-h-[520px]">
+                  <div className="bg-white rounded-xl p-5 sm:p-8 shadow-lg">
 
                     {/* ── Phone step ── */}
                     {step === "phone" && (

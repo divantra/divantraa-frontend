@@ -22,9 +22,9 @@ export function CategoryGrid() {
   if (!isLoading && categories.length === 0) return null;
 
   return (
-    <section className="bg-[#fafcfa] py-8">
+    <section className="bg-cream/40 py-8">
       <div className="text-center">
-        <h2 className="text-3xl md:text-4xl font-bold text-[#235a45] font-serif mb-4">
+        <h2 className="font-display text-3xl md:text-4xl font-semibold text-forest mb-4">
           Shop by Category
         </h2>
 

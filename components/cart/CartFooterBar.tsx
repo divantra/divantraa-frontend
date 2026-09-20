@@ -18,7 +18,7 @@ export function CartFooterBar() {
 
   return (
     <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50">
-        <div className="bg-[#345647] text-white rounded-full px-3 py-2 flex items-center gap-6 shadow-lg w-full max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg">
+        <div className="bg-forest text-white rounded-full px-3 py-2 flex items-center gap-6 shadow-lg w-full max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg">
         
         {/* Thumbnails with overlap */}
         <div className="flex -space-x-3">
@@ -36,7 +36,7 @@ export function CartFooterBar() {
             </div>
           ))}
           {remainingCount > 0 && (
-            <div className="h-8 w-8 flex items-center justify-center rounded-full bg-yellow-400 text-xs font-semibold text-black border-2 border-white">
+            <div className="h-8 w-8 flex items-center justify-center rounded-full bg-gold text-xs font-semibold text-ink border-2 border-white">
               +{remainingCount}
             </div>
           )}
@@ -44,7 +44,7 @@ export function CartFooterBar() {
 
         {/* Item count + total */}
         <div>
-          <p className="text-xs font-semibold text-gray-300">{itemCount} {itemCount === 1 ? "item" : "items"}</p>
+          <p className="text-xs font-semibold text-white/70">{itemCount} {itemCount === 1 ? "item" : "items"}</p>
           <p className="text-sm font-semibold text-white">{new Intl.NumberFormat("en-IN", {
             style: "currency",
             currency: "INR",
@@ -56,7 +56,7 @@ export function CartFooterBar() {
         {/* View cart button */}
         <Link
           href="/cart"
-          className="flex items-center gap-1 bg-yellow-400 text-sm font-semibold px-3 py-2 rounded-full text-black hover:bg-yellow-500 transition-colors"
+          className="flex items-center gap-1 bg-gold text-sm font-semibold px-3 py-2 rounded-full text-ink hover:opacity-90 transition-opacity"
         >
           <ShoppingCart size={16} />
           <ArrowRight size={16} />

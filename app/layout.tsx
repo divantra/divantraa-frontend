@@ -1,5 +1,6 @@
 // app/layout.tsx (server)
 import type { Metadata } from "next";
+import { Figtree, Roboto_Slab } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/lib/providers";
 import { PromoBar } from "@/components/layout/PromoBar";
@@ -9,6 +10,20 @@ import { LoginModal } from "@/components/auth/LoginModal";
 import { CartDrawer } from "@/components/cart/CartDrawer";
 import ClientLayoutWrapper from "@/components/layout/ClientLayoutWrapper";
 
+const figtree = Figtree({
+  subsets: ["latin"],
+  variable: "--font-body",
+  weight: ["400", "500", "600", "700", "900"],
+  display: "swap",
+});
+
+const robotoSlab = Roboto_Slab({
+  subsets: ["latin"],
+  variable: "--font-display",
+  weight: ["400", "500", "600"],
+  display: "swap",
+});
+
 export const metadata: Metadata = {
   title: "Divantraa — Farm to Home",
   description: "A2 ghee, wood cold-pressed oils and lab-tested farm essentials.",
@@ -16,7 +31,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${figtree.variable} ${robotoSlab.variable}`}>
       <body>
         <Providers>
           <PromoBar />

@@ -2,16 +2,65 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Design token layer (Anveshan-aligned) ─────────────────── */
 :root {
-  --font-display: 'Fraunces', serif;
-  --font-body: 'Inter', sans-serif;
+  --color-forest:  #00584B;
+  --color-leaf:    #007A6B;
+  --color-ink:     #242424;
+  --color-cream:   #F5F0E8;
+  --color-gold:    #D3A24A;
+  --color-clay:    #C77B45;
+
+  --font-body-family:    'Figtree', sans-serif;
+  --font-heading-family: 'Roboto Slab', serif;
+  --font-body-scale:     1;
+  --font-heading-scale:  1;
 }
+
+/* ── Base typography (Anveshan system) ─────────────────────── */
 
 body {
-  @apply bg-white text-ink antialiased;
+  font-family: var(--font-body), var(--font-body-family);
+  font-size:   calc(var(--font-body-scale) * 14.5px);
+  font-weight: 400;
+  line-height: 1.5;
+  letter-spacing: 0.06rem;
+  color: rgba(36, 36, 36, 0.75);
+  @apply bg-white antialiased;
 }
 
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display), var(--font-heading-family);
+  color: #242424;
+  letter-spacing: 0.04rem;
+  line-height: 1.25;
+}
+
+h1 { font-size: calc(var(--font-heading-scale) * 1.75rem); font-weight: 600; }
+h2 { font-size: calc(var(--font-heading-scale) * 1.375rem); font-weight: 600; }
+h3 { font-size: calc(var(--font-heading-scale) * 1rem); font-weight: 500; }
+h4 { font-size: calc(var(--font-heading-scale) * 0.9375rem); font-weight: 500; }
+
+/* Nav links, buttons, labels, form elements inherit body font */
+button, a, input, select, textarea, label {
+  font-family: var(--font-body), var(--font-body-family);
+  letter-spacing: 0.06rem;
+}
+
+/* ── Global input style (Anveshan: 1px border at 55% opacity) */
+input:not([type="radio"]):not([type="checkbox"]),
+select,
+textarea {
+  border-color: rgba(36, 36, 36, 0.55);
+}
+
+/* ── Scrollbar ─────────────────────────────────────────────── */
+::-webkit-scrollbar       { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(36,36,36,0.15); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(36,36,36,0.3); }
+
 ::selection {
-  background-color: #D3A24A;
+  background-color: #007A6B;
   color: white;
 }
