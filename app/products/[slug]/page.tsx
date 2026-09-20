@@ -219,34 +219,59 @@ export default function ProductDetailsPage() {
           {/* Short description */}
           <p className="text-ink/60 leading-relaxed mb-5">{product.shortDescription}</p>
 
-          {/* ── Variant selector (dropdown) ────────────────── */}
+          {/* ── Variant selector (cards) ───────────────────── */}
           {product.variants.length > 1 && (
             <div className="mb-5">
-              <label htmlFor="variant" className="text-sm font-medium text-ink mb-2 block">
-                Select Variant
-              </label>
-              <div className="relative">
-                <select
-                  id="variant"
-                  value={activeVariant?.id ?? ""}
-                  onChange={(e) => setSelectedVariantId(e.target.value)}
-                  className="w-full appearance-none rounded-xl border border-ink/20 bg-white px-4 py-3 pr-10 text-sm text-ink focus:border-leaf focus:outline-none"
-                >
-                  {product.variants.map((v) => {
-                    const off = getDiscountPercent(v);
-                    const unit = getUnitPriceLabel(v);
-                    const soldOut = v.trackInventory && v.stock === 0;
-                    return (
-                      <option key={v.id} value={v.id} disabled={soldOut}>
-                        {v.title} — ₹{Number(v.price).toLocaleString("en-IN")}
-                        {off > 0 ? ` (${off}% off)` : ""}
-                        {unit ? ` · ${unit}` : ""}
-                        {soldOut ? " · Out of stock" : ""}
-                      </option>
-                    );
-                  })}
-                </select>
-                <ChevronDown size={16} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-ink/50" />
+              <p id="variant-label" className="text-sm font-medium text-ink/70 mb-3">Select Variant</p>
+              <div role="radiogroup" aria-labelledby="variant-label" className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {[...product.variants].sort((a, b) => a.sortOrder - b.sortOrder).map((v) => {
+                  const off = getDiscountPercent(v);
+                  const unit = getUnitPriceLabel(v);
+                  const soldOut = v.trackInventory && v.stock === 0;
+                  const selected = activeVariant?.id === v.id;
+                  return (
+                    <button
+                      key={v.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={selected}
+                      disabled={soldOut}
+                      onClick={() => setSelectedVariantId(v.id)}
+                      className={`overflow-hidden rounded-xl border text-left transition-all ${
+                        selected
+                          ? "border-forest ring-1 ring-forest shadow-sm"
+                          : soldOut
+                          ? "border-ink/10 opacity-50 cursor-not-allowed"
+                          : "border-ink/15 hover:border-forest/50"
+                      }`}
+                    >
+                      <span
+                        className={`block px-3 py-2 text-center text-sm font-medium ${
+                          selected ? "bg-forest text-white" : "bg-ink/5 text-ink/80"
+                        }`}
+                      >
+                        {v.title}
+                      </span>
+                      <span className="block bg-white px-3 py-3">
+                        <span className="flex flex-wrap items-baseline gap-x-2">
+                          <span className="text-base font-bold text-ink">
+                            ₹{Number(v.price).toLocaleString("en-IN")}
+                          </span>
+                          {off > 0 && (
+                            <>
+                              <span className="text-xs text-ink/40 line-through">
+                                ₹{Number(v.compareAtPrice).toLocaleString("en-IN")}
+                              </span>
+                              <span className="text-xs font-medium text-red-500">{off}% off</span>
+                            </>
+                          )}
+                        </span>
+                        {unit && <span className="mt-1 block text-xs text-leaf">{unit}</span>}
+                        {soldOut && <span className="mt-1 block text-xs text-red-500">Out of stock</span>}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}
