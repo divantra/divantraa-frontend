@@ -29,6 +29,8 @@ export interface ProductVariant {
   images:         string[];                   // variant-specific; [] = use product.images
   resolvedImages: string[];                   // backend resolves: variant.images ?? product.images
   weight:         number | null;              // grams
+  unitQuantity:   number | null;              // per-unit price basis, e.g. 1
+  unitLabel:      string | null;              // e.g. "L" -> "Rs 523/L"
   sortOrder:      number;
   isDefault:      boolean;
   isActive:       boolean;
@@ -47,6 +49,10 @@ export interface Product {
   badges:           string[];
   certifications:   string[];
   labReportUrl:     string | null;
+  benefits:         { title: string; description: string }[];
+  uses:             string[];
+  shelfLife:        string | null;
+  faqs:             { question: string; answer: string }[];
   categoryId:       string;
   category?:        Category;
   images:           string[];   // base images — fallback when variant has no images
@@ -107,4 +113,18 @@ export function groupVariantOptions(
   return Object.fromEntries(
     Object.entries(map).map(([k, s]) => [k, Array.from(s)])
   );
+}
+
+/** Discount percentage vs compare-at price, or 0 when there is none. */
+export function getDiscountPercent(v: ProductVariant): number {
+  const price = Number(v.price);
+  const compare = Number(v.compareAtPrice);
+  return compare > price ? Math.round(((compare - price) / compare) * 100) : 0;
+}
+
+/** e.g. "₹523/L" — null when the variant has no unit basis. */
+export function getUnitPriceLabel(v: ProductVariant): string | null {
+  const qty = Number(v.unitQuantity);
+  if (!qty || !v.unitLabel) return null;
+  return `₹${Math.round(Number(v.price) / qty)}/${v.unitLabel}`;
 }

@@ -3,8 +3,9 @@
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import Image from "next/image";
+import Link from "next/link";
 import { useState, useTransition } from "react";
-import { Star, FileCheck, ShoppingBag, Minus, Plus, Package } from "lucide-react";
+import { Star, FileCheck, ShoppingBag, Minus, Plus, Package, ChevronDown } from "lucide-react";
 import { api } from "@/lib/api";
 import { useCartStore } from "@/store/useCartStore";
 import { useAuthStore } from "@/store/useAuthStore";
@@ -12,7 +13,8 @@ import type { Product } from "@/types/product";
 import {
   getDefaultVariant,
   getVariantImages,
-  groupVariantOptions,
+  getDiscountPercent,
+  getUnitPriceLabel,
 } from "@/types/product";
 
 export default function ProductDetailsPage() {
@@ -23,8 +25,9 @@ export default function ProductDetailsPage() {
   const [isPending, startTransition] = useTransition();
   const [added, setAdded] = useState(false);
 
-  // Variant selector — track which option value is selected per option key
-  const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
+  // Variant selector — the id chosen in the "Select Variant" dropdown
+  const [selectedVariantId, setSelectedVariantId] = useState<string | undefined>();
+  const [openFaq, setOpenFaq] = useState<number | null>(0);
 
   const { data, isLoading } = useQuery({
     queryKey: ["product", slug],
@@ -43,20 +46,10 @@ export default function ProductDetailsPage() {
 
   const product = data;
 
-  const activeVariant = (() => {
-    if (!product) return undefined;
-    const def = getDefaultVariant(product);
-    if (Object.keys(selectedOptions).length === 0) return def;
-
-    // Find a variant that matches all currently selected options
-    return (
-      product.variants.find(
-        (v) =>
-          v.isActive &&
-          Object.entries(selectedOptions).every(([k, val]) => v.options[k] === val)
-      ) ?? def
-    );
-  })();
+  const activeVariant = product
+    ? product.variants.find((v) => v.id === selectedVariantId && v.isActive) ??
+      getDefaultVariant(product)
+    : undefined;
 
   // Images for the current variant (falls back to product images automatically)
   const displayImages = (() => {
@@ -72,9 +65,6 @@ export default function ProductDetailsPage() {
   }
 
   const cartQuantity = activeVariant ? getItemQuantity(activeVariant.id) : 0;
-
-  // ── Grouped options for the variant selector UI ───────────────
-  const optionGroups = product ? groupVariantOptions(product.variants) : {};
 
   // ── Cart actions ──────────────────────────────────────────────
 
@@ -139,12 +129,18 @@ export default function ProductDetailsPage() {
 
   return (
     <>
-      <main className="max-w-7xl mx-auto px-6 py-10 grid md:grid-cols-2 gap-12">
+      <nav aria-label="Breadcrumb" className="max-w-7xl mx-auto px-4 sm:px-6 pt-6 text-xs text-ink/50">
+        <Link href="/products" className="hover:text-forest">All products</Link>
+        <span className="mx-2">/</span>
+        <span className="text-ink/80">{product.title}</span>
+      </nav>
+
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 grid md:grid-cols-2 gap-8 lg:gap-14">
 
         {/* ── Image gallery ─────────────────────────────────── */}
-        <div>
+        <div className="md:sticky md:top-28 self-start">
           {/* Main image */}
-          <div className="aspect-square rounded-2xl bg-ink/5 relative overflow-hidden mb-4">
+          <div className="aspect-square rounded-3xl bg-white border border-ink/10 shadow-sm relative overflow-hidden mb-4">
             {displayImages[activeImage] ? (
               <Image
                 key={displayImages[activeImage]}
@@ -167,7 +163,7 @@ export default function ProductDetailsPage() {
                 <button
                   key={img}
                   onClick={() => setActiveImage(i)}
-                  className={`shrink-0 h-16 w-16 rounded-lg overflow-hidden border-2 relative ${
+                  className={`shrink-0 h-20 w-20 rounded-xl overflow-hidden border-2 relative ${
                     i === activeImage ? "border-leaf" : "border-transparent opacity-60 hover:opacity-100"
                   }`}
                 >
@@ -180,7 +176,7 @@ export default function ProductDetailsPage() {
 
         {/* ── Product info ──────────────────────────────────── */}
         <div>
-          <h1 className="font-display text-3xl text-ink mb-2">{product.title}</h1>
+          <h1 className="font-display text-3xl lg:text-4xl text-ink mb-3">{product.title}</h1>
 
           {/* Rating */}
           {!!product.reviewCount && (
@@ -191,32 +187,29 @@ export default function ProductDetailsPage() {
             </div>
           )}
 
-          {/* Variant title */}
-          {activeVariant && (
-            <p className="text-sm text-ink/50 mb-1">{activeVariant.title}</p>
-          )}
-
           {/* Price */}
-          <div className="flex items-baseline gap-3 mb-6">
+          <div className="mb-6">
             {activeVariant ? (
               <>
-                <span className="text-2xl font-semibold text-ink">
-                  ₹{Number(activeVariant.price)}
-                </span>
-                {activeVariant.compareAtPrice && (
-                  <>
-                    <span className="text-ink/40 line-through text-base">
-                      ₹{Number(activeVariant.compareAtPrice)}
-                    </span>
-                    <span className="text-xs font-medium text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
-                      {Math.round(
-                        ((activeVariant.compareAtPrice - activeVariant.price) /
-                          activeVariant.compareAtPrice) *
-                          100
-                      )}% off
-                    </span>
-                  </>
+                <div className="flex items-baseline gap-3 flex-wrap">
+                  <span className="text-3xl font-semibold text-ink">
+                    ₹{Number(activeVariant.price).toLocaleString("en-IN")}
+                  </span>
+                  {getDiscountPercent(activeVariant) > 0 && (
+                    <>
+                      <span className="text-ink/40 line-through text-base">
+                        ₹{Number(activeVariant.compareAtPrice).toLocaleString("en-IN")}
+                      </span>
+                      <span className="text-xs font-medium text-green-700 bg-green-50 px-2 py-0.5 rounded-full">
+                        {getDiscountPercent(activeVariant)}% off
+                      </span>
+                    </>
+                  )}
+                </div>
+                {getUnitPriceLabel(activeVariant) && (
+                  <p className="text-sm text-ink/50 mt-1">{getUnitPriceLabel(activeVariant)}</p>
                 )}
+                <p className="text-xs text-ink/40 mt-1">Inclusive of all taxes</p>
               </>
             ) : (
               <span className="text-sm text-ink/40">Select a variant</span>
@@ -226,43 +219,37 @@ export default function ProductDetailsPage() {
           {/* Short description */}
           <p className="text-ink/60 leading-relaxed mb-5">{product.shortDescription}</p>
 
-          {/* ── Variant selector ───────────────────────────── */}
-          {Object.entries(optionGroups).map(([optionKey, optionValues]) => (
-            <div key={optionKey} className="mb-4">
-              <p className="text-sm font-medium text-ink mb-2">{optionKey}</p>
-              <div className="flex flex-wrap gap-2">
-                {optionValues.map((val) => {
-                  // Find the variant for this option value to check stock
-                  const matchingVariant = product.variants.find(
-                    (v) => v.isActive && v.options[optionKey] === val
-                  );
-                  const outOfStock =
-                    matchingVariant?.trackInventory && matchingVariant.stock === 0;
-                  const isSelected =
-                    (selectedOptions[optionKey] ?? activeVariant?.options[optionKey]) === val;
-
-                  return (
-                    <button
-                      key={val}
-                      onClick={() =>
-                        setSelectedOptions((prev) => ({ ...prev, [optionKey]: val }))
-                      }
-                      disabled={outOfStock}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium border transition-all ${
-                        isSelected
-                          ? "border-leaf bg-leaf text-white shadow-sm"
-                          : outOfStock
-                          ? "border-ink/10 text-ink/30 line-through cursor-not-allowed"
-                          : "border-ink/20 text-ink hover:border-leaf/60 hover:bg-leaf/5"
-                      }`}
-                    >
-                      {val}
-                    </button>
-                  );
-                })}
+          {/* ── Variant selector (dropdown) ────────────────── */}
+          {product.variants.length > 1 && (
+            <div className="mb-5">
+              <label htmlFor="variant" className="text-sm font-medium text-ink mb-2 block">
+                Select Variant
+              </label>
+              <div className="relative">
+                <select
+                  id="variant"
+                  value={activeVariant?.id ?? ""}
+                  onChange={(e) => setSelectedVariantId(e.target.value)}
+                  className="w-full appearance-none rounded-xl border border-ink/20 bg-white px-4 py-3 pr-10 text-sm text-ink focus:border-leaf focus:outline-none"
+                >
+                  {product.variants.map((v) => {
+                    const off = getDiscountPercent(v);
+                    const unit = getUnitPriceLabel(v);
+                    const soldOut = v.trackInventory && v.stock === 0;
+                    return (
+                      <option key={v.id} value={v.id} disabled={soldOut}>
+                        {v.title} — ₹{Number(v.price).toLocaleString("en-IN")}
+                        {off > 0 ? ` (${off}% off)` : ""}
+                        {unit ? ` · ${unit}` : ""}
+                        {soldOut ? " · Out of stock" : ""}
+                      </option>
+                    );
+                  })}
+                </select>
+                <ChevronDown size={16} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-ink/50" />
               </div>
             </div>
-          ))}
+          )}
 
           {/* Stock status */}
           {activeVariant && (
@@ -375,6 +362,72 @@ export default function ProductDetailsPage() {
           )}
         </div>
       </main>
+
+      {/* ── Details: uses, benefits, FAQ (full width below the fold) ── */}
+      {(product.shelfLife || product.uses?.length > 0 || product.benefits?.length > 0 || product.faqs?.length > 0) && (
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 pb-16">
+          <div className="border-t border-ink/10 pt-10 grid gap-10 lg:grid-cols-3">
+            <div className="lg:col-span-2 space-y-10">
+              {product.benefits?.length > 0 && (
+                <div>
+                  <h2 className="font-display text-2xl text-ink mb-5">Why you'll love it</h2>
+                  <div className="grid gap-4 sm:grid-cols-3">
+                    {product.benefits.map((b, i) => (
+                      <div key={b.title} className="rounded-2xl border border-ink/10 bg-white p-5 shadow-sm">
+                        <span className="mb-3 flex h-9 w-9 items-center justify-center rounded-full bg-leaf/10 text-sm font-semibold text-leaf">
+                          {i + 1}
+                        </span>
+                        <p className="font-medium text-ink">{b.title}</p>
+                        <p className="mt-1 text-sm leading-relaxed text-ink/60">{b.description}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {product.faqs?.length > 0 && (
+                <div>
+                  <h2 className="font-display text-2xl text-ink mb-5">Frequently asked questions</h2>
+                  <div className="divide-y divide-ink/10 rounded-2xl border border-ink/10 bg-white">
+                    {product.faqs.map((f, i) => (
+                      <div key={f.question}>
+                        <button
+                          onClick={() => setOpenFaq(openFaq === i ? null : i)}
+                          aria-expanded={openFaq === i}
+                          className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left text-sm font-medium text-ink"
+                        >
+                          {f.question}
+                          <ChevronDown size={16} className={`shrink-0 transition-transform ${openFaq === i ? "rotate-180" : ""}`} />
+                        </button>
+                        {openFaq === i && <p className="px-5 pb-5 text-sm leading-relaxed text-ink/60">{f.answer}</p>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <aside className="space-y-6 self-start rounded-2xl bg-leaf/5 p-6">
+              {product.shelfLife && (
+                <div>
+                  <h3 className="text-sm font-medium text-ink mb-1">Shelf life</h3>
+                  <p className="text-sm text-ink/60">{product.shelfLife}</p>
+                </div>
+              )}
+              {product.uses?.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-medium text-ink mb-2">Best used for</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {product.uses.map((u) => (
+                      <span key={u} className="rounded-full bg-white px-3 py-1 text-xs text-ink/70 border border-ink/10">{u}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </aside>
+          </div>
+        </section>
+      )}
     </>
   );
 }
