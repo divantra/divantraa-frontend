@@ -16,6 +16,7 @@ export interface Quote {
   allAvailable: boolean;
   freeShippingThreshold: number;
   onlineDiscountPercent: number;
+  razorpayKeyId: string | null;
   lines: { variantId: string; quantity: number; unitPrice: number; stock: number; trackInventory: boolean; available: boolean; issue?: string }[];
   methods: { online: MethodTotals; cod: MethodTotals };
 }

@@ -29,10 +29,29 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// On a 401, try refreshing the access token once, then retry the request.
-let isRefreshing = false;
-let pendingQueue: Array<() => void> = [];
+/**
+ * Refresh tokens are single-use (rotated on every refresh), so two refresh calls at
+ * the same time make the second one fail and sign the user out. Everything that needs
+ * a fresh session — the initial page load AND the 401 interceptor — shares this one
+ * in-flight request.
+ */
+let refreshPromise: Promise<void> | null = null;
 
+export function refreshSession(): Promise<void> {
+  if (!refreshPromise) {
+    refreshPromise = api
+      .post("/auth/refresh")
+      .then(({ data }) => {
+        useAuthStore.getState().setSession(data.accessToken, data.user);
+      })
+      .finally(() => {
+        refreshPromise = null;
+      });
+  }
+  return refreshPromise;
+}
+
+// On a 401, refresh the access token once (shared, see above), then retry the request.
 api.interceptors.response.use(
   (res) => res,
   async (error) => {
@@ -40,23 +59,12 @@ api.interceptors.response.use(
 
     // Never try to refresh when the failing request IS the refresh endpoint —
     // that would create an infinite retry loop.
-    const isRefreshCall = originalRequest.url?.includes("/auth/refresh");
+    const isRefreshCall = originalRequest?.url?.includes("/auth/refresh");
 
-    if (error.response?.status === 401 && !originalRequest._retry && !isRefreshCall) {
+    if (error.response?.status === 401 && originalRequest && !originalRequest._retry && !isRefreshCall) {
       originalRequest._retry = true;
-
-      if (isRefreshing) {
-        // Wait for the in-flight refresh to finish, then retry
-        await new Promise<void>((resolve) => pendingQueue.push(resolve));
-        return api(originalRequest);
-      }
-
-      isRefreshing = true;
       try {
-        const { data } = await api.post("/auth/refresh");
-        useAuthStore.getState().setSession(data.accessToken, data.user);
-        pendingQueue.forEach((resolve) => resolve());
-        pendingQueue = [];
+        await refreshSession();
         return api(originalRequest);
       } catch (refreshError) {
         // Sessions last 30 minutes of inactivity. If a signed-in user hits this,
@@ -66,10 +74,7 @@ api.interceptors.response.use(
         if (wasSignedIn && typeof window !== "undefined") {
           useUiStore.getState().openLoginModal("Your session expired after 30 minutes of inactivity. Please sign in again.");
         }
-        pendingQueue = [];
         return Promise.reject(refreshError);
-      } finally {
-        isRefreshing = false;
       }
     }
 

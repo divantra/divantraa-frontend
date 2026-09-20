@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { api } from "./api";
+import { refreshSession } from "./api";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useCartSync } from "@/hooks/useCartSync";
 
@@ -12,7 +12,6 @@ import { useCartSync } from "@/hooks/useCartSync";
  * Also runs cart sync after session is restored.
  */
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const setSession  = useAuthStore((s) => s.setSession);
   const setHydrated = useAuthStore((s) => s.setHydrated);
 
   useCartSync();
@@ -22,8 +21,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     async function restoreSession() {
       try {
-        const { data } = await api.post("/auth/refresh");
-        if (!cancelled) setSession(data.accessToken, data.user);
+        // Shared with the 401 interceptor so only ONE refresh request is ever in flight.
+        await refreshSession();
       } catch {
         // No valid session — user will see the logged-out state, that's fine.
       } finally {

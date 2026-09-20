@@ -1,12 +1,13 @@
 "use client";
 
-import { use } from "react";
+import { use, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useQuery } from "@tanstack/react-query";
 import { CheckCircle2, Package, MapPin, Banknote, ArrowRight, ShoppingBag } from "lucide-react";
 import { api } from "@/lib/api";
 import { rupees } from "@/hooks/useQuote";
+import { useCartStore } from "@/store/useCartStore";
 
 interface OrderItem {
   id:           string;
@@ -57,6 +58,18 @@ export default function OrderConfirmationPage({ params }: { params: Promise<{ id
       return o && o.paymentMethod === "ONLINE" && o.paymentStatus === "PENDING" ? 3000 : false;
     },
   });
+
+  // Returning from a payment redirect (custom checkout) skips the checkout page's own
+  // cart clearing, so clear the local cart once the order is confirmed or placed (COD).
+  const clearCart = useCartStore((s) => s.clearCart);
+  // Clear immediately on arrival (before login restore + cart sync can push the local
+  // items back to the server cart). Clearing your own local cart from a URL flag is harmless.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("paid") === "1") clearCart();
+  }, [clearCart]);
+  useEffect(() => {
+    if (order && (order.paymentMethod === "COD" || order.paymentStatus === "PAID")) clearCart();
+  }, [order, clearCart]);
 
   if (isLoading) {
     return (

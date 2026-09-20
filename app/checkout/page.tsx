@@ -16,7 +16,9 @@ import { getImageUrl } from "@/lib/image.utils";
 import { getAxiosErrorMessage } from "@/lib/errorUtils";
 import { useQuote, rupees } from "@/hooks/useQuote";
 import { openRazorpayCheckout, type OnlineMethod } from "@/lib/razorpay";
-import PaymentStep, { type PaymentChoice, isValidVpa } from "@/components/checkout/PaymentStep";
+import PaymentStep, { type PaymentChoice, isChoiceReady, isValidEmail } from "@/components/checkout/PaymentStep";
+import { initCustomCheckout, type CustomClient } from "@/lib/razorpayCustom";
+import { emptyCard, type CardValue } from "@/lib/card";
 
 type Step = "address" | "payment";
 type Phase = "idle" | "creating" | "paying" | "confirming";
@@ -87,8 +89,11 @@ export default function CheckoutPage() {
   const [submitted,       setSubmitted]     = useState(false); // prevent double-submit
 
   const [choice,  setChoice]  = useState<PaymentChoice>("upi");
-  const [upiId,   setUpiId]   = useState("");
+  const [card,    setCard]    = useState<CardValue>(emptyCard);
   const [bank,    setBank]    = useState<string | null>(null);
+  const [wallet,  setWallet]  = useState<string | null>(null);
+  const [email,   setEmail]   = useState("");
+  const [custom,  setCustom]  = useState<CustomClient | null>(null);
   const [phase,   setPhase]   = useState<Phase>("idle");
   const [notice,  setNotice]  = useState<string | null>(null);
 
@@ -98,6 +103,26 @@ export default function CheckoutPage() {
   const totals  = quote ? (isCod ? quote.methods.cod : quote.methods.online) : undefined;
   const sub     = subtotal();
   const unavailable = quote?.lines.filter((l) => !l.available) ?? [];
+
+  // Try to switch on our own card / netbanking / wallet pages (Razorpay Custom Checkout).
+  // If it isn't enabled for the account or the script is blocked, `custom` stays null and
+  // we use Razorpay's hosted window for those methods instead.
+  const customTried = useRef(false);
+  useEffect(() => {
+    const key = quote?.razorpayKeyId;
+    if (!key || !quote?.methods.online.enabled || customTried.current) return;
+    customTried.current = true;
+    initCustomCheckout(key).then(setCustom).catch(() => setCustom(null));
+  }, [quote]);
+
+  // Returning from a failed 3-D Secure / bank redirect: show why, keep the cart.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("pay") === "failed") {
+      setNotice(`${params.get("reason") ?? "The payment was not completed."} No money was deducted — you can try again.`);
+      router.replace("/checkout");
+    }
+  }, [router]);
 
   // If online payments are switched off, fall back to COD.
   useEffect(() => {
@@ -199,7 +224,11 @@ export default function CheckoutPage() {
     const shippingBody = selectedAddress();
     if (!selectedAddr || !shippingBody) { setOrderError("Please select a delivery address."); return; }
     if (unavailable.length > 0) { setOrderError("Some items in your cart are no longer available. Please review your cart."); return; }
-    if (choice === "upi" && upiId.trim() && !isValidVpa(upiId)) { setOrderError("Enter a valid UPI ID or leave it blank."); return; }
+    if (choice !== "cod" && !user?.email && !isValidEmail(email)) { setOrderError("Enter your email address for the payment receipt."); return; }
+    if (choice !== "cod" && !isChoiceReady({ selected: choice, custom: custom?.methods ?? null, card, bank, wallet })) {
+      setOrderError(choice === "card" ? "Please check your card details." : choice === "netbanking" ? "Please choose your bank." : "Please choose a wallet.");
+      return;
+    }
 
     setPhase("creating");
     try {
@@ -221,10 +250,27 @@ export default function CheckoutPage() {
         prefill: { name?: string; contact?: string; email?: string };
       };
 
+      // Our own card / netbanking / wallet pages: Razorpay redirects the browser to our
+      // /orders/payment-callback after 3-D Secure, which settles the order and lands on the confirmation page.
+      if (custom && (choice === "card" || choice === "netbanking" || choice === "wallet")) {
+        setPhase("paying");
+        custom.pay(
+          {
+            amount: o.amount, currency: o.currency, orderId: o.razorpayOrderId,
+            email: (user?.email || email).trim(), contact: o.prefill.contact ?? "",
+            callbackUrl: `${window.location.origin}/api/v1/orders/payment-callback`,
+            method: choice, card: choice === "card" ? card : undefined,
+            bank: bank ?? undefined, wallet: wallet ?? undefined,
+          },
+          (msg) => { setPhase("idle"); setNotice(`${msg.replace(/[.!]?$/, ".")} You can retry or choose another method.`); },
+        );
+        return;
+      }
+
       setPhase("paying");
       await openRazorpayCheckout({
         keyId: o.keyId, razorpayOrderId: o.razorpayOrderId, amount: o.amount, currency: o.currency,
-        method: choice as OnlineMethod, bank: bank ?? undefined, vpa: upiId.trim() || undefined,
+        method: choice as OnlineMethod, bank: bank ?? undefined,
         prefill: o.prefill, orderNumber: o.orderNumber,
         onDismiss: () => {
           setPhase((p) => (p === "paying" ? "idle" : p));
@@ -491,7 +537,8 @@ export default function CheckoutPage() {
               )}
               <PaymentStep
                 quote={quote} selected={choice} onSelect={(c) => { setChoice(c); setNotice(null); setOrderError(null); }}
-                upiId={upiId} onUpiId={setUpiId} bank={bank} onBank={setBank}
+                custom={custom?.methods ?? null} card={card} onCard={setCard} bank={bank} onBank={setBank}
+                wallet={wallet} onWallet={setWallet} email={email} onEmail={setEmail} needsEmail={!user?.email}
                 busy={phase !== "idle"} onPay={handlePay}
               />
             </>

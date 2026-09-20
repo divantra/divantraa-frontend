@@ -47,19 +47,23 @@ declare global {
   }
 }
 
+type RazorpayCtor = new (opts: RazorpayOptions) => RazorpayInstance;
+// checkout.js and razorpay.js (custom) both assign window.Razorpay — keep our own reference.
+let hostedCtor: RazorpayCtor | null = null;
+
 const SCRIPT_SRC = "https://checkout.razorpay.com/v1/checkout.js";
 let scriptPromise: Promise<boolean> | null = null;
 
 /** Loads checkout.js once. Resolves false if it is blocked/offline. */
 export function loadRazorpay(): Promise<boolean> {
   if (typeof window === "undefined") return Promise.resolve(false);
-  if (window.Razorpay) return Promise.resolve(true);
+  if (hostedCtor) return Promise.resolve(true);
   if (scriptPromise) return scriptPromise;
   scriptPromise = new Promise<boolean>((resolve) => {
     const s = document.createElement("script");
     s.src = SCRIPT_SRC;
     s.async = true;
-    s.onload = () => resolve(!!window.Razorpay);
+    s.onload = () => { hostedCtor = window.Razorpay ?? null; resolve(!!hostedCtor); };
     s.onerror = () => {
       scriptPromise = null; // allow a retry
       resolve(false);
@@ -81,7 +85,6 @@ export interface CheckoutArgs {
   currency: string;
   method: OnlineMethod;
   bank?: string;  // netbanking: Razorpay bank code, e.g. "HDFC"
-  vpa?: string;   // upi: optional pre-filled UPI ID
   prefill: { name?: string; contact?: string; email?: string };
   orderNumber?: string | null;
   onSuccess: (res: RazorpaySuccess) => void;
@@ -92,9 +95,9 @@ export interface CheckoutArgs {
 /** Opens the Razorpay window. Throws if checkout.js could not be loaded. */
 export async function openRazorpayCheckout(a: CheckoutArgs): Promise<void> {
   const ok = await loadRazorpay();
-  if (!ok || !window.Razorpay) throw new Error("Could not load the secure payment window. Check your connection and try again.");
+  if (!ok || !hostedCtor) throw new Error("Could not load the secure payment window. Check your connection and try again.");
 
-  const rzp = new window.Razorpay({
+  const rzp = new hostedCtor({
     key: a.keyId,
     amount: a.amount,
     currency: a.currency,
@@ -105,7 +108,6 @@ export async function openRazorpayCheckout(a: CheckoutArgs): Promise<void> {
       ...a.prefill,
       method: a.method,
       ...(a.method === "netbanking" && a.bank ? { bank: a.bank } : {}),
-      ...(a.method === "upi" && a.vpa ? { vpa: a.vpa } : {}),
     },
     notes: a.orderNumber ? { order: a.orderNumber } : undefined,
     theme: { color: "#00584B" },
