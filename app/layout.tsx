@@ -9,6 +9,7 @@ import { SiteHeader } from "@/components/layout/SiteHeader";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { LoginModal } from "@/components/auth/LoginModal";
 import { CartDrawer } from "@/components/cart/CartDrawer";
+import { AddOnsDrawer } from "@/components/cart/AddOnsDrawer";
 import ClientLayoutWrapper from "@/components/layout/ClientLayoutWrapper";
 
 const figtree = Figtree({
@@ -41,6 +42,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </Suspense>
           <ClientLayoutWrapper>{children}</ClientLayoutWrapper>
           <CartDrawer />
+          <AddOnsDrawer />
           <LoginModal />
           <SiteFooter />
         </Providers>

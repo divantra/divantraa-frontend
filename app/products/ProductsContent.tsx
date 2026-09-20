@@ -7,6 +7,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Circle, Minus, Plus, ShoppingCart, Star } from "lucide-react";
 import { api } from "@/lib/api";
+import { useUiStore } from "@/store/useUiStore";
 import { useCartStore, type CartLine } from "@/store/useCartStore";
 import type { Product } from "@/types/product";
 import { getDefaultVariant } from "@/types/product";
@@ -427,6 +428,7 @@ function AddToCartButton({ item }: { item: Omit<CartLine, "quantity"> }) {
     setLoading(true);
     setTimeout(() => {
       addItem(item, 1);
+      useUiStore.getState().openAddOns(item.productId);
       setLoading(false);
       setAdded(true);
       setTimeout(() => setAdded(false), 1500);
