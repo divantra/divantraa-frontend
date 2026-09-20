@@ -6,6 +6,7 @@ import { X } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useUiStore } from "@/store/useUiStore";
+import { useCartStore } from "@/store/useCartStore";
 import { useSendOtp, useResendOtp, useVerifyOtp } from "@/hooks/useAuth";
 import { ProfileStep } from "./ProfileStep";
 import { getAxiosErrorMessage, getAxiosErrorStatus } from "@/lib/errorUtils";
@@ -13,8 +14,8 @@ import { getImageUrl } from "@/lib/image.utils";
 
 type ModalStep = "phone" | "otp" | "profile" | "done";
 
-/** Shown briefly on success then closes + redirects to /account. */
-function AutoRedirectDone({ onClose }: { onClose: () => void }) {
+/** Shown briefly on success, then closes (and continues to checkout when the cart has items). */
+function AutoRedirectDone({ onClose, toCheckout }: { onClose: () => void; toCheckout: boolean }) {
   useEffect(() => {
     const t = setTimeout(onClose, 900);
     return () => clearTimeout(t);
@@ -23,7 +24,7 @@ function AutoRedirectDone({ onClose }: { onClose: () => void }) {
     <div className="text-center py-6">
       <div className="text-4xl mb-3">🎉</div>
       <p className="font-display text-xl text-ink">You&apos;re signed in!</p>
-      <p className="text-sm text-ink/50 mt-1">Taking you to your account…</p>
+      <p className="text-sm text-ink/50 mt-1">{toCheckout ? "Taking you to checkout…" : "Welcome back."}</p>
     </div>
   );
 }
@@ -39,7 +40,7 @@ const RESEND_SECONDS = 30;
  * New users see a short name/email step; returning users close straight into session.
  */
 export function LoginModal() {
-  const { isLoginModalOpen, closeLoginModal } = useUiStore();
+  const { isLoginModalOpen, closeLoginModal, loginNotice } = useUiStore();
   const router = useRouter();
   const [step, setStep] = useState<ModalStep>("phone");
   const [phone, setPhone] = useState("");
@@ -50,9 +51,12 @@ export function LoginModal() {
 
   // Stable reference so AutoRedirectDone's useEffect([onClose]) never
   // resets the timeout when the parent re-renders during the 900 ms wait.
+  // After signing in, carry on to checkout when there is something in the cart;
+  // otherwise just close the modal and leave the customer where they were.
+  const hasCartItems = useCartStore((s) => s.items.length > 0);
   const handleDone = useCallback(() => {
     closeLoginModal();
-    router.push("/account");
+    if (useCartStore.getState().items.length > 0) router.push("/checkout");
   }, [closeLoginModal, router]);
 
   const sendOtp = useSendOtp();
@@ -183,6 +187,11 @@ export function LoginModal() {
                 {/* Form content — min-h is shorter on small phones */}
                 <div className="relative z-10 flex flex-col justify-end p-4 sm:p-6 min-h-[420px] sm:min-h-[520px]">
                   <div className="bg-white rounded-xl p-5 sm:p-8 shadow-lg">
+                    {loginNotice && (
+                      <p role="status" className="mb-4 rounded-lg bg-amber-50 px-3 py-2 text-center text-sm text-amber-800">
+                        {loginNotice}
+                      </p>
+                    )}
 
                     {/* ── Phone step ── */}
                     {step === "phone" && (
@@ -317,9 +326,9 @@ export function LoginModal() {
                     {/* ── Profile step (new users only) ── */}
                     {step === "profile" && <ProfileStep onComplete={() => setStep("done")} />}
 
-                    {/* ── Done — auto-redirect to /account ── */}
+                    {/* ── Done — continue to checkout (cart) or close ── */}
                     {step === "done" && (
-                      <AutoRedirectDone onClose={handleDone} />
+                      <AutoRedirectDone onClose={handleDone} toCheckout={hasCartItems} />
                     )}
                   </div>
                   <p className="text-center text-xs text-white/60 pt-4">Divantraa — Farm to Home</p>

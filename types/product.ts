@@ -59,6 +59,7 @@ export interface Product {
   metaTitle:        string | null;
   metaDescription:  string | null;
   isFeatured:       boolean;
+  isRecommended?:   boolean;   // suggested as an add-on after add-to-cart
   isActive:         boolean;
   variants:         ProductVariant[];  // always present; at least one per product
   avgRating?:       number | null;    // computed by API from reviews

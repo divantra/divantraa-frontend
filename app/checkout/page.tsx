@@ -1,26 +1,27 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import {
   MapPin, Plus, Check, ChevronRight, Truck, Banknote,
-  AlertCircle, Package, ArrowLeft,
+  AlertCircle, ArrowLeft, Loader2, ShieldCheck,
 } from "lucide-react";
 import { useCartStore } from "@/store/useCartStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { api } from "@/lib/api";
 import { getImageUrl } from "@/lib/image.utils";
 import { getAxiosErrorMessage } from "@/lib/errorUtils";
+import { useQuote, rupees } from "@/hooks/useQuote";
+import { openRazorpayCheckout, type OnlineMethod } from "@/lib/razorpay";
+import PaymentStep, { type PaymentChoice, isChoiceReady, isValidEmail } from "@/components/checkout/PaymentStep";
+import { initCustomCheckout, type CustomClient } from "@/lib/razorpayCustom";
+import { emptyCard, type CardValue } from "@/lib/card";
 
-// ── Constants ────────────────────────────────────────────────────
-const SHIPPING_FREE_THRESHOLD = 999;
-const SHIPPING_FEE            = 79;
-const COD_FEE                 = 50;
-
-type Step = "address" | "review";
+type Step = "address" | "payment";
+type Phase = "idle" | "creating" | "paying" | "confirming";
 
 interface Address {
   id:       string;
@@ -87,18 +88,57 @@ export default function CheckoutPage() {
   const [submitting,      setSubmitting]    = useState(false);
   const [submitted,       setSubmitted]     = useState(false); // prevent double-submit
 
-  const sub      = subtotal();
-  const shipping = sub >= SHIPPING_FREE_THRESHOLD ? 0 : SHIPPING_FEE;
-  const total    = sub + shipping + COD_FEE;
+  const [choice,  setChoice]  = useState<PaymentChoice>("upi");
+  const [card,    setCard]    = useState<CardValue>(emptyCard);
+  const [bank,    setBank]    = useState<string | null>(null);
+  const [wallet,  setWallet]  = useState<string | null>(null);
+  const [email,   setEmail]   = useState("");
+  const [custom,  setCustom]  = useState<CustomClient | null>(null);
+  const [phase,   setPhase]   = useState<Phase>("idle");
+  const [notice,  setNotice]  = useState<string | null>(null);
+
+  // Every rupee shown here comes from the server quote — nothing is hard-coded.
+  const { data: quote } = useQuote(items);
+  const isCod   = choice === "cod";
+  const totals  = quote ? (isCod ? quote.methods.cod : quote.methods.online) : undefined;
+  const sub     = subtotal();
+  const unavailable = quote?.lines.filter((l) => !l.available) ?? [];
+
+  // Try to switch on our own card / netbanking / wallet pages (Razorpay Custom Checkout).
+  // If it isn't enabled for the account or the script is blocked, `custom` stays null and
+  // we use Razorpay's hosted window for those methods instead.
+  const customTried = useRef(false);
+  useEffect(() => {
+    const key = quote?.razorpayKeyId;
+    if (!key || !quote?.methods.online.enabled || customTried.current) return;
+    customTried.current = true;
+    initCustomCheckout(key).then(setCustom).catch(() => setCustom(null));
+  }, [quote]);
+
+  // Returning from a failed 3-D Secure / bank redirect: show why, keep the cart.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("pay") === "failed") {
+      setNotice(`${params.get("reason") ?? "The payment was not completed."} No money was deducted — you can try again.`);
+      router.replace("/checkout");
+    }
+  }, [router]);
+
+  // If online payments are switched off, fall back to COD.
+  useEffect(() => {
+    if (quote && !quote.methods.online.enabled && quote.methods.cod.enabled) setChoice("cod");
+  }, [quote]);
 
   // Redirect unauthenticated
   useEffect(() => {
     if (isHydrated && !user) router.replace("/");
   }, [isHydrated, user, router]);
 
-  // Redirect empty cart
+  // Redirect empty cart — but not right after a successful order, when we clear the
+  // cart ourselves and are already heading to the confirmation page.
+  const orderDone = useRef(false);
   useEffect(() => {
-    if (isHydrated && items.length === 0) router.replace("/cart");
+    if (isHydrated && items.length === 0 && !orderDone.current) router.replace("/cart");
   }, [isHydrated, items, router]);
 
   // Fetch saved addresses
@@ -148,44 +188,119 @@ export default function CheckoutPage() {
     saveAddress.mutate(form);
   }
 
-  async function handlePlaceOrder() {
-    if (submitted || submitting) return;
-    if (!selectedAddr) { setOrderError("Please select a delivery address."); return; }
+  /** Push the local cart to the server cart so the backend prices exactly what the customer sees. */
+  async function syncCartToServer() {
+    await api.delete("/cart");
+    for (const item of items) {
+      await api.post("/cart/items", { variantId: item.variantId, quantity: item.quantity });
+    }
+  }
 
+  function selectedAddress() {
     const addr = addresses.find((a) => a.id === selectedAddr);
-    if (!addr) { setOrderError("Selected address not found."); return; }
+    if (!addr) return null;
+    return {
+      fullName: addr.fullName, phone: addr.phone, line1: addr.line1, line2: addr.line2 ?? undefined,
+      city: addr.city, state: addr.state, pincode: addr.pincode, landmark: addr.landmark ?? undefined,
+    };
+  }
 
-    setSubmitting(true);
-    setSubmitted(true);
+  /** After a successful payment the webhook may still be in flight — wait for the server to confirm. */
+  async function waitForPaid(orderId: string): Promise<boolean> {
+    for (let i = 0; i < 10; i++) {
+      try {
+        const { data } = await api.get(`/orders/${orderId}`);
+        if (data.data.paymentStatus === "PAID") return true;
+      } catch { /* session may have lapsed; keep trying briefly */ }
+      await new Promise((r) => setTimeout(r, 3000));
+    }
+    return false;
+  }
+
+  async function handlePay() {
+    if (phase !== "idle") return;
     setOrderError(null);
+    setNotice(null);
+    const shippingBody = selectedAddress();
+    if (!selectedAddr || !shippingBody) { setOrderError("Please select a delivery address."); return; }
+    if (unavailable.length > 0) { setOrderError("Some items in your cart are no longer available. Please review your cart."); return; }
+    if (choice !== "cod" && !user?.email && !isValidEmail(email)) { setOrderError("Enter your email address for the payment receipt."); return; }
+    if (choice !== "cod" && !isChoiceReady({ selected: choice, custom: custom?.methods ?? null, card, bank, wallet })) {
+      setOrderError(choice === "card" ? "Please check your card details." : choice === "netbanking" ? "Please choose your bank." : "Please choose a wallet.");
+      return;
+    }
 
+    setPhase("creating");
     try {
-      // Sync local cart to server before placing order.
-      // DELETE first (so POST takes the create path, not increment), then re-add every item.
-      // Errors are NOT suppressed — if sync fails the user sees a real error message.
-      await api.delete("/cart");
-      for (const item of items) {
-        await api.post("/cart/items", { variantId: item.variantId, quantity: item.quantity });
+      await syncCartToServer();
+
+      // ── Cash on delivery ────────────────────────────────────
+      if (choice === "cod") {
+        const { data } = await api.post("/orders/create-cod-order", shippingBody);
+        orderDone.current = true;
+        clearCart();
+        router.push(`/order-confirmation/${data.data.id}`);
+        return;
       }
 
-      const { data } = await api.post("/orders/create-cod-order", {
-        fullName: addr.fullName,
-        phone:    addr.phone,
-        line1:    addr.line1,
-        line2:    addr.line2 ?? undefined,
-        city:     addr.city,
-        state:    addr.state,
-        pincode:  addr.pincode,
-        landmark: addr.landmark ?? undefined,
-      });
+      // ── Online: server creates the order + Razorpay order for the exact amount ──
+      const { data } = await api.post("/orders/create-razorpay-order", shippingBody);
+      const o = data.data as {
+        orderId: string; orderNumber: string; razorpayOrderId: string; amount: number; currency: string; keyId: string;
+        prefill: { name?: string; contact?: string; email?: string };
+      };
 
-      clearCart();
-      router.push(`/order-confirmation/${data.data.id}`);
+      // Our own card / netbanking / wallet pages: Razorpay redirects the browser to our
+      // /orders/payment-callback after 3-D Secure, which settles the order and lands on the confirmation page.
+      if (custom && (choice === "card" || choice === "netbanking" || choice === "wallet")) {
+        setPhase("paying");
+        custom.pay(
+          {
+            amount: o.amount, currency: o.currency, orderId: o.razorpayOrderId,
+            email: (user?.email || email).trim(), contact: o.prefill.contact ?? "",
+            callbackUrl: `${window.location.origin}/api/v1/orders/payment-callback`,
+            method: choice, card: choice === "card" ? card : undefined,
+            bank: bank ?? undefined, wallet: wallet ?? undefined,
+          },
+          (msg) => { setPhase("idle"); setNotice(`${msg.replace(/[.!]?$/, ".")} You can retry or choose another method.`); },
+        );
+        return;
+      }
+
+      setPhase("paying");
+      await openRazorpayCheckout({
+        keyId: o.keyId, razorpayOrderId: o.razorpayOrderId, amount: o.amount, currency: o.currency,
+        method: choice as OnlineMethod, bank: bank ?? undefined,
+        prefill: o.prefill, orderNumber: o.orderNumber,
+        onDismiss: () => {
+          setPhase((p) => (p === "paying" ? "idle" : p));
+          setNotice("Payment cancelled. No money was deducted and your cart is saved — you can try again.");
+        },
+        onFailure: (msg) => setNotice(`${msg} You can retry in the payment window or choose another method.`),
+        onSuccess: async (res) => {
+          setPhase("confirming");
+          try {
+            await api.post("/orders/verify-payment", { orderId: o.orderId, ...res });
+            orderDone.current = true;
+            clearCart();
+            router.push(`/order-confirmation/${o.orderId}`);
+          } catch {
+            // Money left the customer's account but our confirmation call failed —
+            // the webhook will complete the order. Poll for it instead of scaring the user.
+            if (await waitForPaid(o.orderId)) {
+              orderDone.current = true;
+              clearCart();
+              router.push(`/order-confirmation/${o.orderId}`);
+            } else {
+              setPhase("idle");
+              setOrderError("We received your payment and are confirming your order. Check 'My Orders' in a few minutes — you will not be charged twice.");
+            }
+          }
+        },
+      });
     } catch (err) {
+      setPhase("idle");
       setOrderError(getAxiosErrorMessage(err));
-      setSubmitted(false);
-    } finally {
-      setSubmitting(false);
     }
   }
 
@@ -205,9 +320,9 @@ export default function CheckoutPage() {
 
       {/* Step indicator */}
       <div className="flex items-center gap-2 mb-8 text-sm">
-        <StepBadge active={step === "address"} done={step === "review"} n={1} label="Address" />
+        <StepBadge active={step === "address"} done={step === "payment"} n={1} label="Address" />
         <ChevronRight size={14} className="text-ink/30" />
-        <StepBadge active={step === "review"} done={false} n={2} label="Review & Pay" />
+        <StepBadge active={step === "payment"} done={false} n={2} label="Payment" />
       </div>
 
       <div className="grid lg:grid-cols-[1fr_360px] gap-8">
@@ -347,7 +462,7 @@ export default function CheckoutPage() {
                   onClick={() => {
                     if (!selectedAddr) { setOrderError("Please select or add a delivery address."); return; }
                     setOrderError(null);
-                    setStep("review");
+                    setStep("payment");
                   }}
                   disabled={!selectedAddr && addresses.length > 0}
                   className="mt-6 w-full rounded-xl bg-leaf text-white font-medium py-3.5 hover:opacity-90 transition-opacity disabled:opacity-40"
@@ -364,7 +479,7 @@ export default function CheckoutPage() {
           )}
 
           {/* Step 2: Payment + confirmation */}
-          {step === "review" && (
+          {step === "payment" && (
             <>
               {/* Selected address summary */}
               {(() => {
@@ -395,47 +510,37 @@ export default function CheckoutPage() {
                 <div className="flex items-center gap-2">
                   <Check size={14} className="text-green-500" />
                   <span className="text-sm text-ink/70">
-                    {shipping === 0
+                    {!totals
+                      ? "Standard delivery (1–3 business days)"
+                      : totals.shippingFee === 0
                       ? "Free standard delivery (1–3 business days)"
-                      : `Standard delivery — ₹${SHIPPING_FEE} (1–3 business days)`}
+                      : `Standard delivery — ${rupees(totals.shippingFee)} (1–3 business days)`}
                   </span>
                 </div>
               </div>
 
-              {/* Payment method */}
-              <div className="bg-white rounded-2xl border border-ink/8 shadow-sm p-5">
-                <h3 className="font-semibold text-sm text-ink flex items-center gap-2 mb-3">
-                  <Banknote size={14} className="text-leaf" /> Payment Method
-                </h3>
-                <label className="flex items-center gap-3 p-3 rounded-xl border-2 border-leaf bg-leaf/5 cursor-pointer">
-                  <input type="radio" name="payment" checked readOnly className="accent-leaf" />
-                  <div>
-                    <p className="text-sm font-medium text-ink">Cash on Delivery (COD)</p>
-                    <p className="text-xs text-ink/50">Pay ₹{COD_FEE} extra at delivery</p>
-                  </div>
-                </label>
-              </div>
-
-              {orderError && (
-                <div className="flex gap-2 text-sm text-red-600 bg-red-50 rounded-xl p-4">
-                  <AlertCircle size={15} className="shrink-0 mt-0.5" /> {orderError}
+              {unavailable.length > 0 && (
+                <div className="flex gap-2 rounded-xl bg-amber-50 p-4 text-sm text-amber-800">
+                  <AlertCircle size={15} className="mt-0.5 shrink-0" />
+                  <span>Some items in your cart are unavailable or low on stock. <Link href="/cart" className="underline">Review your cart</Link>.</span>
                 </div>
               )}
-
-              <button
-                onClick={handlePlaceOrder}
-                disabled={submitting || submitted}
-                className="w-full rounded-xl bg-leaf text-white font-semibold py-4 text-base hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                {submitting ? (
-                  "Placing Order…"
-                ) : (
-                  <><Package size={18} /> Place Order — ₹{total.toFixed(0)}</>
-                )}
-              </button>
-              <p className="text-center text-xs text-ink/40 -mt-2">
-                By placing the order you agree to our terms and conditions.
-              </p>
+              {notice && (
+                <div role="status" className="flex gap-2 rounded-xl bg-ink/5 p-4 text-sm text-ink/70">
+                  <AlertCircle size={15} className="mt-0.5 shrink-0" /> {notice}
+                </div>
+              )}
+              {orderError && (
+                <div role="alert" className="flex gap-2 rounded-xl bg-red-50 p-4 text-sm text-red-600">
+                  <AlertCircle size={15} className="mt-0.5 shrink-0" /> {orderError}
+                </div>
+              )}
+              <PaymentStep
+                quote={quote} selected={choice} onSelect={(c) => { setChoice(c); setNotice(null); setOrderError(null); }}
+                custom={custom?.methods ?? null} card={card} onCard={setCard} bank={bank} onBank={setBank}
+                wallet={wallet} onWallet={setWallet} email={email} onEmail={setEmail} needsEmail={!user?.email}
+                busy={phase !== "idle"} onPay={handlePay}
+              />
             </>
           )}
         </div>
@@ -468,26 +573,41 @@ export default function CheckoutPage() {
 
             <div className="border-t border-ink/8 pt-4 space-y-2 text-sm">
               <div className="flex justify-between text-ink/60">
-                <span>Subtotal</span><span>₹{sub.toFixed(0)}</span>
+                <span>Subtotal</span><span>{rupees(totals?.subtotal ?? sub)}</span>
               </div>
               <div className="flex justify-between text-ink/60">
                 <span>Shipping</span>
-                <span>{shipping === 0 ? <span className="text-green-600">Free</span> : `₹${shipping}`}</span>
+                <span>{!totals ? "—" : totals.shippingFee === 0 ? <span className="text-green-600">Free</span> : rupees(totals.shippingFee)}</span>
               </div>
-              <div className="flex justify-between text-ink/60">
-                <span>COD Charge</span><span>₹{COD_FEE}</span>
-              </div>
+              {isCod && totals && totals.codFee > 0 && (
+                <div className="flex justify-between text-ink/60">
+                  <span>COD charge</span><span>{rupees(totals.codFee)}</span>
+                </div>
+              )}
+              {!isCod && totals && totals.discount > 0 && (
+                <div className="flex justify-between text-green-700">
+                  <span>Online payment discount</span><span>−{rupees(totals.discount)}</span>
+                </div>
+              )}
               <div className="border-t border-ink/8 pt-2 flex justify-between font-semibold text-ink">
-                <span>Total Payable</span><span>₹{total.toFixed(0)}</span>
+                <span>Total payable</span><span>{totals ? rupees(totals.total) : "—"}</span>
               </div>
             </div>
-
             <p className="mt-3 text-xs text-ink/40 text-center">
               Inclusive of all taxes · Free returns within 7 days
             </p>
           </div>
         </aside>
       </div>
+      {phase === "confirming" && (
+        <div role="alertdialog" aria-live="assertive" className="fixed inset-0 z-[70] flex items-center justify-center bg-white/90 backdrop-blur-sm">
+          <div className="max-w-sm px-6 text-center">
+            <Loader2 size={36} className="mx-auto mb-4 animate-spin text-forest" />
+            <p className="font-display text-xl text-ink">Confirming your payment…</p>
+            <p className="mt-2 text-sm text-ink/60">Please don&apos;t close or refresh this page.</p>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

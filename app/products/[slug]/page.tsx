@@ -9,6 +9,7 @@ import { Star, FileCheck, ShoppingBag, Minus, Plus, Package, ChevronDown } from 
 import { api } from "@/lib/api";
 import { useCartStore } from "@/store/useCartStore";
 import { useAuthStore } from "@/store/useAuthStore";
+import { useUiStore } from "@/store/useUiStore";
 import type { Product } from "@/types/product";
 import {
   getDefaultVariant,
@@ -89,6 +90,7 @@ export default function ProductDetailsPage() {
         1
       );
       syncAddToServer(activeVariant.id, 1);
+      useUiStore.getState().openAddOns(product.id);
       setAdded(true);
       setTimeout(() => setAdded(false), 1500);
     });

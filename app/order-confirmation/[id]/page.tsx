@@ -1,11 +1,13 @@
 "use client";
 
-import { use } from "react";
+import { use, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useQuery } from "@tanstack/react-query";
 import { CheckCircle2, Package, MapPin, Banknote, ArrowRight, ShoppingBag } from "lucide-react";
 import { api } from "@/lib/api";
+import { rupees } from "@/hooks/useQuote";
+import { useCartStore } from "@/store/useCartStore";
 
 interface OrderItem {
   id:           string;
@@ -22,6 +24,9 @@ interface Order {
   orderNumber:      string | null;
   status:           string;
   paymentMethod:    string;
+  paymentStatus?:   string;
+  paymentChannel?:  string | null;
+  discount?:        number;
   subtotal:         number;
   shippingFee:      number;
   codFee:           number;
@@ -38,6 +43,8 @@ interface Order {
   items:            OrderItem[];
 }
 
+const CHANNEL_LABEL: Record<string, string> = { upi: "UPI", card: "Card", netbanking: "Netbanking", wallet: "Wallet" };
+
 export default function OrderConfirmationPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
 
@@ -45,7 +52,24 @@ export default function OrderConfirmationPage({ params }: { params: Promise<{ id
     queryKey: ["order", id],
     queryFn:  () => api.get(`/orders/${id}`).then((r) => r.data.data),
     retry:    false,
+    // Online order still waiting for the payment gateway to confirm: keep checking.
+    refetchInterval: (q) => {
+      const o = q.state.data as Order | undefined;
+      return o && o.paymentMethod === "ONLINE" && o.paymentStatus === "PENDING" ? 3000 : false;
+    },
   });
+
+  // Returning from a payment redirect (custom checkout) skips the checkout page's own
+  // cart clearing, so clear the local cart once the order is confirmed or placed (COD).
+  const clearCart = useCartStore((s) => s.clearCart);
+  // Clear immediately on arrival (before login restore + cart sync can push the local
+  // items back to the server cart). Clearing your own local cart from a URL flag is harmless.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("paid") === "1") clearCart();
+  }, [clearCart]);
+  useEffect(() => {
+    if (order && (order.paymentMethod === "COD" || order.paymentStatus === "PAID")) clearCart();
+  }, [order, clearCart]);
 
   if (isLoading) {
     return (
@@ -98,12 +122,16 @@ export default function OrderConfirmationPage({ params }: { params: Promise<{ id
           <Banknote size={18} className="text-leaf shrink-0" />
           <div>
             <p className="text-sm font-medium text-ink">
-              {order.paymentMethod === "COD" ? "Cash on Delivery" : "Online Payment"}
+              {order.paymentMethod === "COD"
+                ? "Cash on Delivery"
+                : `Online Payment${order.paymentChannel ? ` · ${CHANNEL_LABEL[order.paymentChannel] ?? order.paymentChannel}` : ""}`}
             </p>
             <p className="text-xs text-ink/50">
               {order.paymentMethod === "COD"
                 ? "Pay at the time of delivery"
-                : "Payment processed online"}
+                : order.paymentStatus === "PAID"
+                ? "Payment received — thank you!"
+                : "Confirming your payment…"}
             </p>
           </div>
           <span className="ml-auto text-xs bg-amber-100 text-amber-700 font-medium px-2.5 py-1 rounded-full">
@@ -170,13 +198,18 @@ export default function OrderConfirmationPage({ params }: { params: Promise<{ id
                   : `₹${Number(order.shippingFee)}`}
               </span>
             </div>
+            {Number(order.discount ?? 0) > 0 && (
+              <div className="flex justify-between text-green-700">
+                <span>Online payment discount</span><span>−{rupees(Number(order.discount))}</span>
+              </div>
+            )}
             {Number(order.codFee) > 0 && (
               <div className="flex justify-between text-ink/60">
                 <span>COD Charge</span><span>₹{Number(order.codFee)}</span>
               </div>
             )}
             <div className="border-t border-ink/8 pt-2 flex justify-between font-semibold text-ink">
-              <span>Total</span><span>₹{Number(order.total).toFixed(0)}</span>
+              <span>Total</span><span>{rupees(Number(order.total))}</span>
             </div>
           </div>
         </div>

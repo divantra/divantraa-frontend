@@ -53,13 +53,13 @@ interface OrderMeta { total: number; page: number; limit: number; pages: number 
 
 interface NewProductForm {
   title: string; slug: string; shortDescription: string; description: string;
-  categoryId: string; images: string; isFeatured: boolean;
+  categoryId: string; images: string; isFeatured: boolean; isRecommended: boolean;
   variantTitle: string; variantSku: string; variantPrice: string; variantStock: string;
 }
 
 const emptyForm: NewProductForm = {
   title: "", slug: "", shortDescription: "", description: "",
-  categoryId: "", images: "", isFeatured: false,
+  categoryId: "", images: "", isFeatured: false, isRecommended: false,
   variantTitle: "", variantSku: "", variantPrice: "", variantStock: "0",
 };
 
@@ -237,7 +237,7 @@ export default function AdminPage() {
     createProduct.mutate({
       title: form.title, slug: form.slug, shortDescription: form.shortDescription || undefined,
       description: form.description, categoryId: form.categoryId || undefined,
-      images: form.images.split(",").map(s => s.trim()).filter(Boolean), isFeatured: form.isFeatured,
+      images: form.images.split(",").map(s => s.trim()).filter(Boolean), isFeatured: form.isFeatured, isRecommended: form.isRecommended,
       variants: [{ title: form.variantTitle || "Default", options: {}, sku: form.variantSku,
         price: parseFloat(form.variantPrice), stock: parseInt(form.variantStock, 10) || 0,
         isDefault: true, images: [] }],
@@ -630,6 +630,11 @@ export default function AdminPage() {
                     onChange={e => setForm(f => ({ ...f, isFeatured: e.target.checked }))} className="rounded border-ink/20" />
                   <label htmlFor="isFeatured" className="text-sm text-ink">Mark as featured</label>
                 </div>
+                <div className="flex items-center gap-2 sm:col-span-2">
+                  <input id="isRecommended" type="checkbox" checked={form.isRecommended}
+                    onChange={e => setForm(f => ({ ...f, isRecommended: e.target.checked }))} className="rounded border-ink/20" />
+                  <label htmlFor="isRecommended" className="text-sm text-ink">Recommend as add-on (shown after add to cart)</label>
+                </div>
               </div>
               {formError && <p className="mt-3 text-sm text-red-500">{formError}</p>}
               <div className="flex gap-3 mt-5">
@@ -660,6 +665,7 @@ export default function AdminPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="font-medium text-ink truncate">{product.title}</p>
+                      {product.isRecommended && <span className="text-xs bg-leaf/10 text-leaf px-2 py-0.5 rounded-full shrink-0">Add-on</span>}
                       {product.isFeatured && <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full shrink-0">Featured</span>}
                       {!product.isActive && <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full shrink-0">Inactive</span>}
                     </div>

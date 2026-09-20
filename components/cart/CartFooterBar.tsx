@@ -1,6 +1,8 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useCartStore } from "@/store/useCartStore";
 import Image from "next/image";
 import { ArrowRight , ShoppingCart } from "lucide-react";
@@ -10,8 +12,17 @@ export function CartFooterBar() {
   const itemCount = useCartStore((s) => s.itemCount());
   const total = useCartStore((s) => s.totalPrice());
   const openCart = useCartStore((s) => s.openCart);
+  const isCartOpen = useCartStore((s) => s.isOpen);
+  const pathname = usePathname();
 
-  if (itemCount === 0) return null;
+  // The cart lives in localStorage, which the server can't see. Render nothing until the
+  // page has mounted so the server HTML and first client render match (no hydration warning).
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  // Hide while the cart drawer is open so it never covers the Checkout button.
+  const onCheckoutFlow = /^\/(checkout|cart|order-confirmation)/.test(pathname ?? "");
+  if (!mounted || itemCount === 0 || isCartOpen || onCheckoutFlow) return null;
 
   const visibleItems = items.slice(0, 2);
   const remainingCount = itemCount - visibleItems.length;

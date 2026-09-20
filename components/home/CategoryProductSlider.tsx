@@ -26,6 +26,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 
+import { useUiStore } from "@/store/useUiStore";
 import { api } from "@/lib/api";
 import {
   useCartStore,
@@ -1194,6 +1195,7 @@ function AddToCartButton({
 
     setTimeout(() => {
       addItem(item, 1);
+      useUiStore.getState().openAddOns(item.productId);
 
       setLoading(false);
       setAdded(true);

@@ -280,7 +280,7 @@ export function SiteHeader() {
                       </>
                     ) : (
                       <button
-                        onClick={openLoginModal}
+                        onClick={() => openLoginModal()}
                         aria-label="Sign in"
                         className="flex items-center gap-1.5 group"
                       >
