@@ -1,6 +1,7 @@
 // app/layout.tsx (server)
 import type { Metadata } from "next";
 import { Figtree, Roboto_Slab } from "next/font/google";
+import { Suspense } from "react";
 import "./globals.css";
 import { Providers } from "@/lib/providers";
 import { PromoBar } from "@/components/layout/PromoBar";
@@ -35,7 +36,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <Providers>
           <PromoBar />
-          <SiteHeader />
+          <Suspense fallback={<div className="sticky top-0 z-50 h-[108px] bg-white shadow-sm" />}>
+            <SiteHeader />
+          </Suspense>
           <ClientLayoutWrapper>{children}</ClientLayoutWrapper>
           <CartDrawer />
           <LoginModal />
