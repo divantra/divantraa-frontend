@@ -268,7 +268,7 @@ export function SiteHeader() {
           <div className="px-6 pb-2">
             <nav className="flex items-center justify-center gap-8 h-9 text-sm font-medium text-ink/70">
               <Link href="/products"                             className="hover:text-forest transition-colors whitespace-nowrap">All Products</Link>
-              <Link href="/products?category=cold-pressed-oils" className="hover:text-forest transition-colors whitespace-nowrap">Newly Launched</Link>
+              <Link href="/products?category=wood-pressed-oils" className="hover:text-forest transition-colors whitespace-nowrap">Newly Launched</Link>
               <Link href="/products"                             className="hover:text-forest transition-colors whitespace-nowrap">Oils</Link>
               <Link href="/products"                             className="hover:text-forest transition-colors whitespace-nowrap">Wood Pressed Oils</Link>
               <Link href="/about"                                className="hover:text-forest transition-colors whitespace-nowrap">About Us</Link>

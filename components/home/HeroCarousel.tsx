@@ -18,7 +18,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 //     subtitle: "Extracted slowly, the way your grandmother would approve of.",
 //     cta: "Shop Oils",
 //     image: "/images/hero_caurosel_2.jpeg",
-//     href: "/products?category=cold-pressed-oils",
+//     href: "/products?category=wood-pressed-oils",
 //   },
 // ];
 
@@ -35,7 +35,7 @@ const slides = [
     subtitle:
       "Thoughtfully crafted with time-honoured methods and quality ingredients.",
     cta: "Shop Oils",
-    href: "/products?category=cold-pressed-oils",
+    href: "/products?category=wood-pressed-oils",
   },
 ];
 

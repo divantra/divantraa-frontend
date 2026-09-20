@@ -22,6 +22,22 @@ const nextConfig = {
    * ever reaches Next.js, so this rewrite is a complete no-op there.
    * It only activates when running `next dev` locally (no nginx).
    */
+  // Old size-specific product URLs -> merged product with variants
+  async redirects() {
+    return [
+      { source: "/products/wood-pressed-mustard-oil-250ml", destination: "/products/wood-pressed-mustard-oil", permanent: true },
+      { source: "/products/wood-pressed-mustard-oil-1l", destination: "/products/wood-pressed-mustard-oil", permanent: true },
+      { source: "/products/wood-pressed-mustard-oil-500ml", destination: "/products/wood-pressed-mustard-oil", permanent: true },
+      { source: "/products/wood-pressed-coconut-oil-250ml", destination: "/products/wood-pressed-coconut-oil", permanent: true },
+      { source: "/products/wood-pressed-coconut-oil-500ml", destination: "/products/wood-pressed-coconut-oil", permanent: true },
+      { source: "/products/wood-pressed-coconut-oil-1l", destination: "/products/wood-pressed-coconut-oil", permanent: true },
+      { source: "/products/wood-pressed-groundnut-oil-500ml", destination: "/products/wood-pressed-groundnut-oil", permanent: true },
+      { source: "/products/wood-pressed-groundnut-oil-1l", destination: "/products/wood-pressed-groundnut-oil", permanent: true },
+      { source: "/products/wood-pressed-sesame-oil-250ml", destination: "/products/wood-pressed-sesame-oil", permanent: true },
+      { source: "/products/wood-pressed-sesame-oil-500ml", destination: "/products/wood-pressed-sesame-oil", permanent: true },
+    ];
+  },
+
   async rewrites() {
     return [
       {
