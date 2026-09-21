@@ -60,24 +60,29 @@ export default function PaymentStep(p: Props) {
 
   const setCard = (k: string) => (s: FieldState) => setCardStates((prev) => (prev[k]?.complete === s.complete && prev[k]?.invalid === s.invalid && prev[k]?.error === s.error && prev[k]?.failed === s.failed ? prev : { ...prev, [k]: s }));
   const cardReady = ["number", "holder", "expiry", "cvv"].every((k) => cardStates[k]?.complete);
-  const anyFieldFailed = Object.values(cardStates).some((s) => s.failed) || upiCollectState.failed;
+  // Degrade per method: a failing UPI-ID box must not take cards down with it.
+  const cardFailed = Object.values(cardStates).some((s) => s.failed);
+  const upiFailed = upiCollectState.failed;
 
-  // Cashfree SDK unavailable (blocked / offline / domain not enabled): fall back to its hosted checkout.
-  const hostedOnly = sdkStatus === "failed" || anyFieldFailed;
+  // Cashfree SDK could not be loaded at all (blocked / offline): everything uses Cashfree's hosted checkout.
+  const hostedOnly = sdkStatus === "failed";
 
   const selection: Selection = useMemo(() => {
     if (selected === "cod") return { component: null, ready: true, hosted: false };
     if (hostedOnly) return { component: null, ready: true, hosted: true };
     switch (selected) {
-      case "card": return { component: cardNumber, ready: !!cardNumber && cardReady, hosted: false };
+      case "card":
+        if (cardFailed) return { component: null, ready: true, hosted: true };
+        return { component: cardNumber, ready: !!cardNumber && cardReady, hosted: false };
       case "upi": {
         if (upiPick === "app" && upiApp) return { component: upiApp, ready: true, hosted: false };
+        if (upiFailed) return { component: null, ready: true, hosted: true };
         return { component: upiCollect, ready: !!upiCollect && upiCollectState.complete, hosted: false };
       }
       case "netbanking": return { component: bank, ready: !!bank, hosted: false };
       case "wallet": return { component: walletComp, ready: !!walletComp && isPhone(phone), hosted: false };
     }
-  }, [selected, hostedOnly, cardNumber, cardReady, upiPick, upiApp, upiCollect, upiCollectState.complete, bank, walletComp, phone]);
+  }, [selected, hostedOnly, cardFailed, upiFailed, cardNumber, cardReady, upiPick, upiApp, upiCollect, upiCollectState.complete, bank, walletComp, phone]);
 
   useEffect(() => { p.onSelection(selection); }, [selection]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -133,10 +138,14 @@ export default function PaymentStep(p: Props) {
                     </div>
                   </div>
                 )}
-                <div onFocusCapture={() => setUpiPick("collect")}>
-                  <CfField sdk={sdkForPanels} type="upiCollect" label="Or enter your UPI ID" values={{ placeholder: "yourname@bank" }}
-                    onComponent={setUpiCollect} onState={setUpiCollectState} />
-                </div>
+                {upiFailed ? (
+                  <p className="text-xs text-ink/60">Tap Pay to choose your UPI app or scan a QR code in Cashfree&apos;s secure window.</p>
+                ) : (
+                  <div onFocusCapture={() => setUpiPick("collect")}>
+                    <CfField sdk={sdkForPanels} type="upiCollect" label="Or enter your UPI ID" values={{ placeholder: "yourname@bank" }}
+                      onComponent={setUpiCollect} onState={setUpiCollectState} />
+                  </div>
+                )}
                 <button type="button" onClick={p.onHostedCheckout} className="text-xs font-medium text-forest underline">
                   More UPI options / scan QR code
                 </button>
@@ -175,7 +184,7 @@ export default function PaymentStep(p: Props) {
         <div className={box("card", !onlineOk)}>
           <MethodRow id="card" selected={selected === "card"} disabled={!onlineOk} onSelect={onSelect}
             icon={<CreditCard size={20} />} title="Debit / Credit cards" subtitle="Visa, Mastercard, RuPay, Amex & more" amount={onlineAmount} chip={chip}>
-            {hostedOnly ? (
+            {hostedOnly || cardFailed ? (
               <p className="flex items-start gap-2 text-xs text-ink/60">
                 <Lock size={13} className="mt-0.5 shrink-0 text-leaf" /> You&apos;ll enter your card details in Cashfree&apos;s secure window.
               </p>

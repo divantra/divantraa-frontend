@@ -26,29 +26,57 @@ function useCfComponent(
 
   useEffect(() => {
     if (!sdk) return;
-    let comp: CfComponent;
-    try {
-      comp = sdk.create(type, { values: JSON.parse(key) });
-    } catch (e) {
-      setState({ ...IDLE, failed: true, error: (e as Error).message });
-      return;
-    }
-    const refresh = () => {
-      const d = comp.data();
-      setState({ complete: !!d.complete, invalid: !!d.invalid, error: d.error?.message ?? null, failed: false });
+    let comp: CfComponent | null = null;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let retried = false;
+    let cancelled = false;
+
+    const fail = (message: string) => setState({ ...IDLE, failed: true, error: message });
+
+    const build = () => {
+      if (cancelled) return;
+      let c: CfComponent;
+      try {
+        c = sdk.create(type, { values: JSON.parse(key) });
+      } catch (e) {
+        fail((e as Error).message);
+        return;
+      }
+      comp = c;
+      const refresh = () => {
+        const d = c.data();
+        setState({ complete: !!d.complete, invalid: !!d.invalid, error: d.error?.message ?? null, failed: false });
+      };
+      EVENTS.forEach((ev) => c.on(ev, refresh));
+      c.on("loaderror", (d) => {
+        const message = (d as { error?: { message?: string } })?.error?.message ?? "Could not load";
+        // Cashfree says "please try mounting again": do that once, then give up and let the caller fall back.
+        if (!retried && !cancelled) {
+          retried = true;
+          try { c.destroy(); } catch { /* already gone */ }
+          onComponent?.(null);
+          timer = setTimeout(build, 400);
+          return;
+        }
+        // Helps diagnose setup problems (domain not enabled, method not activated) — contains no payment data.
+        console.warn(`[cashfree] "${type}" field failed to load: ${message}`);
+        fail(message);
+      });
+      try {
+        c.mount(`#${containerId}`);
+      } catch (e) {
+        fail((e as Error).message);
+        return;
+      }
+      onComponent?.(c);
     };
-    EVENTS.forEach((ev) => comp.on(ev, refresh));
-    comp.on("loaderror", (d) => setState({ ...IDLE, failed: true, error: (d as { error?: { message?: string } })?.error?.message ?? "Could not load" }));
-    try {
-      comp.mount(`#${containerId}`);
-    } catch (e) {
-      setState({ ...IDLE, failed: true, error: (e as Error).message });
-      return;
-    }
-    onComponent?.(comp);
+
+    build();
     return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
       onComponent?.(null);
-      try { comp.destroy(); } catch { /* already gone */ }
+      try { comp?.destroy(); } catch { /* already gone */ }
     };
     // onComponent is intentionally not a dependency (callers pass inline functions)
     // eslint-disable-next-line react-hooks/exhaustive-deps
