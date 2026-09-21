@@ -17,8 +17,16 @@ import { getAxiosErrorMessage } from "@/lib/errorUtils";
 import { useQuote, rupees } from "@/hooks/useQuote";
 import { loadCashfree, returnUrlFor, type CashfreeSDK } from "@/lib/cashfree";
 import PaymentStep, { type PaymentChoice, type PayRequest } from "@/components/checkout/PaymentStep";
+import HostedPaymentStep from "@/components/checkout/HostedPaymentStep";
 import type { QrState } from "@/components/checkout/QrCard";
 import { startInlinePayment, fetchPayStatus } from "@/lib/payMethods";
+
+/**
+ * Which payment UI to show:
+ *  - "hosted" (default): "Pay securely" sends the customer to Cashfree's own page with every payment option.
+ *  - "custom": our in-page checkout (inline QR, UPI ID/apps, netbanking, wallets, hosted card fields) — kept as a fallback.
+ */
+const CUSTOM_UI = process.env.NEXT_PUBLIC_PAYMENT_UI === "custom";
 
 type Step = "address" | "payment";
 type Phase = "idle" | "creating" | "paying" | "confirming";
@@ -305,6 +313,7 @@ export default function CheckoutPage() {
   }
 
   function handlePay() {
+    if (!CUSTOM_UI) return runRequest(choice === "cod" ? { kind: "cod" } : { kind: "hosted", target: "_self" });
     if (request) return runRequest(request);
   }
 
@@ -362,14 +371,15 @@ export default function CheckoutPage() {
           if (!sdk) throw new Error("The secure payment window could not be loaded. Please check your connection and try again.");
           const returnUrl = returnUrlFor(o.orderNumber);
           setPhase("paying");
+          const target = req.kind === "hosted" ? req.target ?? "_modal" : "_modal";
           const result = req.kind === "card"
             ? await sdk.pay({ paymentMethod: req.component, paymentSessionId: o.paymentSessionId, returnUrl, redirect: "if_required" })
-            : await sdk.checkout({ paymentSessionId: o.paymentSessionId, returnUrl, redirectTarget: "_modal" });
+            : await sdk.checkout({ paymentSessionId: o.paymentSessionId, returnUrl, redirectTarget: target });
           if (result.error) {
             setPhase("idle");
             setNotice(`${(result.error.message ?? "The payment could not be completed").replace(/[.!]?$/, ".")} You can retry or choose another method.`);
-          } else if (result.redirect) {
-            // The browser is being sent to the bank (3-D Secure); Cashfree brings it back to /payment/return.
+          } else if (result.redirect || target === "_self") {
+            // The browser is being sent to Cashfree's page / the bank; Cashfree brings it back to /payment/return.
           } else {
             // Finished without a redirect (e.g. the window was closed): ask our server what happened.
             orderDone.current = true;
@@ -615,27 +625,37 @@ export default function CheckoutPage() {
                   <AlertCircle size={15} className="mt-0.5 shrink-0" /> {orderError}
                 </div>
               )}
-              {waiting && waiting.kind !== "qr" && (
-                <div role="status" className="flex items-start gap-3 rounded-xl border border-forest/30 bg-leaf/5 p-4 text-sm">
-                  <Loader2 size={18} className="mt-0.5 shrink-0 animate-spin text-forest" />
-                  <div className="flex-1">
-                    <p className="font-medium text-ink">
-                      {waiting.kind === "collect" ? `Payment request sent to ${waiting.label}` : "Complete the payment in your UPI app"}
-                    </p>
-                    <p className="mt-0.5 text-xs text-ink/60">
-                      {waiting.kind === "collect" ? "Open your UPI app and approve it." : "Come back to this page after paying."} This page updates automatically.
-                    </p>
+              {!CUSTOM_UI ? (
+                <HostedPaymentStep
+                  quote={quote} selected={choice}
+                  onSelect={(c) => { setChoice(c); setNotice(null); setOrderError(null); }}
+                  busy={phase !== "idle"} onPay={handlePay}
+                />
+              ) : (
+                <>
+                {waiting && waiting.kind !== "qr" && (
+                  <div role="status" className="flex items-start gap-3 rounded-xl border border-forest/30 bg-leaf/5 p-4 text-sm">
+                    <Loader2 size={18} className="mt-0.5 shrink-0 animate-spin text-forest" />
+                    <div className="flex-1">
+                      <p className="font-medium text-ink">
+                        {waiting.kind === "collect" ? `Payment request sent to ${waiting.label}` : "Complete the payment in your UPI app"}
+                      </p>
+                      <p className="mt-0.5 text-xs text-ink/60">
+                        {waiting.kind === "collect" ? "Open your UPI app and approve it." : "Come back to this page after paying."} This page updates automatically.
+                      </p>
+                    </div>
+                    <button type="button" onClick={stopWaiting} className="text-xs font-medium text-forest underline">Cancel</button>
                   </div>
-                  <button type="button" onClick={stopWaiting} className="text-xs font-medium text-forest underline">Cancel</button>
-                </div>
+                )}
+                <PaymentStep
+                  quote={quote} selected={choice} onSelect={(c) => { setChoice(c); setNotice(null); setOrderError(null); }}
+                  sdk={sdk} sdkStatus={sdkStatus} onRequest={setRequest}
+                  busy={phase !== "idle" || (!!waiting && waiting.kind !== "qr")} onPay={handlePay}
+                  qr={qr} onShowQr={showQr} onQrExpired={qrExpired}
+                  onHostedCheckout={handleHostedCheckout}
+                />
+                </>
               )}
-              <PaymentStep
-                quote={quote} selected={choice} onSelect={(c) => { setChoice(c); setNotice(null); setOrderError(null); }}
-                sdk={sdk} sdkStatus={sdkStatus} onRequest={setRequest}
-                busy={phase !== "idle" || (!!waiting && waiting.kind !== "qr")} onPay={handlePay}
-                qr={qr} onShowQr={showQr} onQrExpired={qrExpired}
-                onHostedCheckout={handleHostedCheckout}
-              />
             </>
           )}
         </div>

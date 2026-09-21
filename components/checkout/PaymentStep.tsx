@@ -14,7 +14,7 @@ export type PaymentChoice = "upi" | "card" | "netbanking" | "wallet" | "cod";
 /** What "Pay" will do for the current selection (null = the selection is not complete yet). */
 export type PayRequest =
   | { kind: "cod" }
-  | { kind: "hosted" }                                            // Cashfree's own checkout window
+  | { kind: "hosted"; target?: "_self" | "_modal" }                // Cashfree's own checkout (full page or modal)
   | { kind: "card"; component: CfComponent }                      // Cashfree-hosted card fields
   | { kind: "upi_collect"; upiId: string }
   | { kind: "upi_intent"; app: string }
