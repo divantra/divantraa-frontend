@@ -1,141 +1,232 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
-import { Banknote, Check, ChevronRight, CreditCard, Landmark, Loader2, Lock, Search, ShieldCheck, Smartphone, Wallet } from "lucide-react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { Banknote, Check, ChevronRight, CreditCard, Landmark, Loader2, Lock, ShieldCheck, Smartphone, Wallet } from "lucide-react";
 import { rupees, type Quote } from "@/hooks/useQuote";
-import CardForm from "@/components/checkout/CardForm";
-import { isCardValid, type CardValue } from "@/lib/card";
-import type { CustomMethods } from "@/lib/razorpayCustom";
+import { CfButton, CfField, type FieldState } from "@/components/checkout/CfParts";
+import { POPULAR_BANKS, UPI_APPS, WALLETS, type CashfreeSDK, type CfComponent } from "@/lib/cashfree";
 
 export type PaymentChoice = "upi" | "card" | "netbanking" | "wallet" | "cod";
 
-/** Razorpay bank codes for the most-used netbanking banks. */
-export const POPULAR_BANKS = [
-  { code: "HDFC", name: "HDFC Bank" },
-  { code: "ICIC", name: "ICICI Bank" },
-  { code: "SBIN", name: "State Bank of India" },
-  { code: "UTIB", name: "Axis Bank" },
-  { code: "KKBK", name: "Kotak Mahindra Bank" },
-] as const;
-
-export const isValidEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.trim());
+/** What the parent needs to take the payment: which Cashfree component to pay with (or hosted checkout). */
+export interface Selection {
+  component: CfComponent | null;
+  ready: boolean;
+  hosted: boolean;
+}
 
 interface Props {
   quote: Quote | undefined;
   selected: PaymentChoice;
   onSelect: (c: PaymentChoice) => void;
-  /** null = Razorpay Custom Checkout unavailable → we fall back to the hosted window. */
-  custom: CustomMethods | null;
-  card: CardValue;
-  onCard: (c: CardValue) => void;
-  bank: string | null;
-  onBank: (code: string | null) => void;
-  wallet: string | null;
-  onWallet: (code: string | null) => void;
-  email: string;
-  onEmail: (v: string) => void;
-  needsEmail: boolean;
+  sdk: CashfreeSDK | null;
+  sdkStatus: "loading" | "ready" | "failed";
+  onSelection: (s: Selection) => void;
   busy: boolean;
   onPay: () => void;
+  /** Open Cashfree's own checkout (all banks / QR / every UPI app) */
+  onHostedCheckout: () => void;
 }
 
-/** True when the chosen method's own inputs are complete (custom flows only). */
-export function isChoiceReady(p: Pick<Props, "selected" | "custom" | "card" | "bank" | "wallet">): boolean {
-  if (!p.custom) return true;
-  if (p.selected === "card") return isCardValid(p.card);
-  if (p.selected === "netbanking") return !!p.bank;
-  if (p.selected === "wallet") return !!p.wallet;
-  return true;
-}
+const EMPTY: FieldState = { complete: false, invalid: false, error: null, failed: false };
+const isPhone = (v: string) => /^[6-9]\d{9}$/.test(v);
 
 export default function PaymentStep(p: Props) {
-  const { quote, selected, onSelect, custom, busy, onPay } = p;
+  const { quote, selected, onSelect, sdk, sdkStatus, busy, onPay } = p;
   const online = quote?.methods.online;
   const cod = quote?.methods.cod;
   const onlineOk = !!online?.enabled;
   const codOk = !!cod?.enabled;
   const pct = quote?.onlineDiscountPercent ?? 0;
   const onlineAmount = online ? rupees(online.total) : "—";
-  const emailBad = selected !== "cod" && p.needsEmail && !isValidEmail(p.email);
-  const ready = isChoiceReady(p) && !emailBad;
+
+  // ── State of each payment method's Cashfree components ──
+  const [cardNumber, setCardNumber] = useState<CfComponent | null>(null);
+  const [cardStates, setCardStates] = useState<Record<string, FieldState>>({});
+  const [upiCollect, setUpiCollect] = useState<CfComponent | null>(null);
+  const [upiCollectState, setUpiCollectState] = useState<FieldState>(EMPTY);
+  const [upiApp, setUpiApp] = useState<CfComponent | null>(null);
+  const [upiPick, setUpiPick] = useState<"collect" | "app">("collect");
+  const [upiAppName, setUpiAppName] = useState<string | null>(null);
+  const [bank, setBank] = useState<CfComponent | null>(null);
+  const [bankName, setBankName] = useState<string | null>(null);
+  const [phone, setPhone] = useState("");
+  const [walletComp, setWalletComp] = useState<CfComponent | null>(null);
+  const [walletName, setWalletName] = useState<string | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    setIsMobile(window.matchMedia("(pointer: coarse)").matches || /Android|iPhone|iPad/i.test(navigator.userAgent));
+  }, []);
+
+  const setCard = (k: string) => (s: FieldState) => setCardStates((prev) => (prev[k]?.complete === s.complete && prev[k]?.invalid === s.invalid && prev[k]?.error === s.error && prev[k]?.failed === s.failed ? prev : { ...prev, [k]: s }));
+  const cardReady = ["number", "holder", "expiry", "cvv"].every((k) => cardStates[k]?.complete);
+  const anyFieldFailed = Object.values(cardStates).some((s) => s.failed) || upiCollectState.failed;
+
+  // Cashfree SDK unavailable (blocked / offline / domain not enabled): fall back to its hosted checkout.
+  const hostedOnly = sdkStatus === "failed" || anyFieldFailed;
+
+  const selection: Selection = useMemo(() => {
+    if (selected === "cod") return { component: null, ready: true, hosted: false };
+    if (hostedOnly) return { component: null, ready: true, hosted: true };
+    switch (selected) {
+      case "card": return { component: cardNumber, ready: !!cardNumber && cardReady, hosted: false };
+      case "upi": {
+        if (upiPick === "app" && upiApp) return { component: upiApp, ready: true, hosted: false };
+        return { component: upiCollect, ready: !!upiCollect && upiCollectState.complete, hosted: false };
+      }
+      case "netbanking": return { component: bank, ready: !!bank, hosted: false };
+      case "wallet": return { component: walletComp, ready: !!walletComp && isPhone(phone), hosted: false };
+    }
+  }, [selected, hostedOnly, cardNumber, cardReady, upiPick, upiApp, upiCollect, upiCollectState.complete, bank, walletComp, phone]);
+
+  useEffect(() => { p.onSelection(selection); }, [selection]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const payAmount = selected === "cod" ? cod?.total : online?.total;
   const payLabel = selected === "cod" ? `Place order · ${payAmount != null ? rupees(payAmount) : ""}` : `Pay ${payAmount != null ? rupees(payAmount) : ""} securely`;
-
   const chip = pct > 0 ? (
     <span className="inline-flex items-center gap-1 rounded-md bg-green-50 px-2 py-0.5 text-[11px] font-medium text-green-700">
       <Check size={11} /> Extra {pct}% off
     </span>
   ) : null;
-
   const box = (id: PaymentChoice, disabled: boolean) =>
     `overflow-hidden rounded-2xl border-2 ${selected === id ? "border-forest" : "border-ink/10"} ${disabled ? "opacity-50" : ""}`;
+  const loading = sdkStatus === "loading" && !hostedOnly;
+  const sdkForPanels = hostedOnly ? null : sdk;
 
   return (
     <section aria-label="Payment options" className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="font-semibold text-ink">Payment options</h2>
         <span className="inline-flex items-center gap-1.5 text-xs text-ink/50">
-          <ShieldCheck size={14} className="text-leaf" /> Secured by Razorpay
+          <ShieldCheck size={14} className="text-leaf" /> Secured by Cashfree
         </span>
       </div>
 
       {!onlineOk && quote && (
         <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800">Online payments are temporarily unavailable. You can still pay on delivery.</p>
       )}
+      {hostedOnly && onlineOk && (
+        <p className="rounded-xl bg-ink/5 p-3 text-xs text-ink/60">
+          You&apos;ll complete the payment in Cashfree&apos;s secure window.
+        </p>
+      )}
 
       <div role="radiogroup" aria-label="Payment method" className="space-y-3">
-        {/* Suggested: UPI (secure window: app on mobile, QR on desktop) */}
+        {/* ── UPI ── */}
         <div className={box("upi", !onlineOk)}>
           {onlineOk && <p className="bg-forest px-4 py-1.5 text-center text-xs font-semibold text-white">Suggested payment method</p>}
           <MethodRow id="upi" selected={selected === "upi"} disabled={!onlineOk} onSelect={onSelect}
-            icon={<Smartphone size={20} />} title="Pay via UPI" subtitle="Google Pay, PhonePe, Paytm, BHIM & any UPI app"
-            amount={onlineAmount} chip={chip}>
-            <p className="text-xs text-ink/60">
-              Tap Pay to continue in a secure window — choose your UPI app on mobile, or scan the QR code with any UPI app.
-            </p>
+            icon={<Smartphone size={20} />} title="Pay via UPI" subtitle="Google Pay, PhonePe, Paytm, BHIM & any UPI app" amount={onlineAmount} chip={chip}>
+            {hostedOnly ? (
+              <p className="text-xs text-ink/60">Tap Pay to choose your UPI app or scan a QR code.</p>
+            ) : (
+              <div className="space-y-4">
+                {isMobile && (
+                  <div>
+                    <p className="mb-2 text-xs text-ink/50">Pay with an app</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      {UPI_APPS.map((a) => (
+                        <CfButton key={a.upiApp} sdk={sdkForPanels} type="upiApp" selected={upiPick === "app" && upiApp !== null && a.upiApp === upiAppName}
+                          values={{ upiApp: a.upiApp, buttonText: a.label, buttonIcon: true }}
+                          onPick={(c) => { setUpiApp(c); setUpiPick("app"); setUpiAppName(a.upiApp); }} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <div onFocusCapture={() => setUpiPick("collect")}>
+                  <CfField sdk={sdkForPanels} type="upiCollect" label="Or enter your UPI ID" values={{ placeholder: "yourname@bank" }}
+                    onComponent={setUpiCollect} onState={setUpiCollectState} />
+                </div>
+                <button type="button" onClick={p.onHostedCheckout} className="text-xs font-medium text-forest underline">
+                  More UPI options / scan QR code
+                </button>
+                {loading && <p className="text-xs text-ink/40">Loading secure fields…</p>}
+              </div>
+            )}
           </MethodRow>
         </div>
 
+        {/* ── Netbanking ── */}
         <div className={box("netbanking", !onlineOk)}>
           <MethodRow id="netbanking" selected={selected === "netbanking"} disabled={!onlineOk} onSelect={onSelect}
             icon={<Landmark size={20} />} title="Netbanking" subtitle="Pay from your bank account" amount={onlineAmount} chip={chip}>
-            <BankPicker custom={custom} bank={p.bank} onBank={p.onBank} />
+            {hostedOnly ? (
+              <p className="text-xs text-ink/60">Tap Pay to choose your bank.</p>
+            ) : (
+              <>
+                <p className="mb-2 text-xs text-ink/50">Popular banks</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {POPULAR_BANKS.map((b) => (
+                    <CfButton key={b.name} sdk={sdkForPanels} type="netbanking" selected={bankName === b.name}
+                      values={{ netbankingBankName: b.name, buttonText: b.label, buttonIcon: true }}
+                      onPick={(c) => { setBank(c); setBankName(b.name); }} />
+                  ))}
+                </div>
+                <button type="button" onClick={p.onHostedCheckout} className="mt-3 text-xs font-medium text-forest underline">
+                  Other banks
+                </button>
+                {loading && <p className="mt-2 text-xs text-ink/40">Loading secure fields…</p>}
+              </>
+            )}
           </MethodRow>
         </div>
 
+        {/* ── Cards ── */}
         <div className={box("card", !onlineOk)}>
           <MethodRow id="card" selected={selected === "card"} disabled={!onlineOk} onSelect={onSelect}
             icon={<CreditCard size={20} />} title="Debit / Credit cards" subtitle="Visa, Mastercard, RuPay, Amex & more" amount={onlineAmount} chip={chip}>
-            {custom ? (
-              <CardForm value={p.card} onChange={p.onCard} />
-            ) : (
+            {hostedOnly ? (
               <p className="flex items-start gap-2 text-xs text-ink/60">
-                <Lock size={13} className="mt-0.5 shrink-0 text-leaf" />
-                You&apos;ll enter your card details in Razorpay&apos;s secure window. We never see or store them.
+                <Lock size={13} className="mt-0.5 shrink-0 text-leaf" /> You&apos;ll enter your card details in Cashfree&apos;s secure window.
               </p>
+            ) : (
+              <div className="space-y-3">
+                <CfField sdk={sdkForPanels} type="cardNumber" label="Card number" values={{ placeholder: "1234 5678 9012 3456" }}
+                  onComponent={setCardNumber} onState={setCard("number")} />
+                <CfField sdk={sdkForPanels} type="cardHolder" label="Name on card" values={{ placeholder: "As printed on the card" }} onState={setCard("holder")} />
+                <div className="grid grid-cols-2 gap-3">
+                  <CfField sdk={sdkForPanels} type="cardExpiry" label="Expiry" onState={setCard("expiry")} />
+                  <CfField sdk={sdkForPanels} type="cardCvv" label="CVV" onState={setCard("cvv")} />
+                </div>
+                <p className="flex items-start gap-2 text-xs text-ink/50">
+                  <Lock size={13} className="mt-0.5 shrink-0 text-leaf" />
+                  These fields are hosted by Cashfree — your card details never touch our servers.
+                </p>
+                {loading && <p className="text-xs text-ink/40">Loading secure fields…</p>}
+              </div>
             )}
           </MethodRow>
         </div>
 
+        {/* ── Wallets ── */}
         <div className={box("wallet", !onlineOk)}>
           <MethodRow id="wallet" selected={selected === "wallet"} disabled={!onlineOk} onSelect={onSelect}
             icon={<Wallet size={20} />} title="Wallets" subtitle="Pay with your mobile wallet" amount={onlineAmount} chip={chip}>
-            {custom && custom.wallets.length > 0 ? (
-              <div className="grid grid-cols-2 gap-2">
-                {custom.wallets.map((w) => (
-                  <button key={w.code} type="button" onClick={() => p.onWallet(w.code)} aria-pressed={p.wallet === w.code}
-                    className={`rounded-lg border px-3 py-2.5 text-left text-xs font-medium transition-colors ${p.wallet === w.code ? "border-forest bg-leaf/5 text-forest" : "border-ink/15 text-ink/70 hover:border-ink/30"}`}>
-                    {w.name}
-                  </button>
-                ))}
-              </div>
+            {hostedOnly ? (
+              <p className="text-xs text-ink/60">Tap Pay to choose your wallet.</p>
             ) : (
-              <p className="text-xs text-ink/60">Choose your wallet in the next screen and approve the payment in its app.</p>
+              <>
+                <label htmlFor="wallet-phone" className="mb-1 block text-xs text-ink/50">Mobile number linked to your wallet</label>
+                <input id="wallet-phone" value={phone} inputMode="numeric" maxLength={10} placeholder="10-digit mobile number"
+                  onChange={(e) => { setPhone(e.target.value.replace(/\D/g, "").slice(0, 10)); setWalletComp(null); setWalletName(null); }}
+                  className="mb-3 w-full rounded-lg border border-ink/15 px-3 py-2.5 text-sm outline-none focus:border-leaf" />
+                {isPhone(phone) ? (
+                  <div className="grid grid-cols-2 gap-2">
+                    {WALLETS.map((w) => (
+                      <CfButton key={`${w.provider}-${phone}`} sdk={sdkForPanels} type="wallet" selected={walletName === w.provider}
+                        values={{ provider: w.provider, phone, buttonText: w.label, buttonIcon: true }}
+                        onPick={(c) => { setWalletComp(c); setWalletName(w.provider); }} />
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-ink/40">Enter your number to see wallets.</p>
+                )}
+              </>
             )}
           </MethodRow>
         </div>
 
+        {/* ── COD ── */}
         <div className={box("cod", !codOk)}>
           <MethodRow id="cod" selected={selected === "cod"} disabled={!codOk} onSelect={onSelect}
             icon={<Banknote size={20} />} title="Cash on delivery"
@@ -150,76 +241,15 @@ export default function PaymentStep(p: Props) {
         </div>
       </div>
 
-      {selected !== "cod" && p.needsEmail && (
-        <div>
-          <label htmlFor="pay-email" className="mb-1 block text-xs text-ink/50">Email for your payment receipt</label>
-          <input id="pay-email" type="email" autoComplete="email" value={p.email} onChange={(e) => p.onEmail(e.target.value)} placeholder="you@example.com"
-            aria-invalid={p.email !== "" && emailBad}
-            className={`w-full rounded-lg border px-3 py-2.5 text-sm outline-none transition-colors ${p.email !== "" && emailBad ? "border-red-400" : "border-ink/15 focus:border-leaf"}`} />
-        </div>
-      )}
-
       <button type="button" onClick={onPay}
-        disabled={busy || !quote || !ready || (selected === "cod" ? !codOk : !onlineOk)}
+        disabled={busy || !quote || !selection.ready || (selected === "cod" ? !codOk : !onlineOk)}
         className="flex w-full items-center justify-center gap-2 rounded-xl bg-forest py-4 text-base font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50">
         {busy ? <><Loader2 size={18} className="animate-spin" /> Processing…</> : <>{selected !== "cod" && <Lock size={16} />}{payLabel}</>}
       </button>
-      <p className="text-center text-xs text-ink/40">By continuing you agree to our terms and conditions. Payments are processed by Razorpay.</p>
+      <p className="text-center text-xs text-ink/40">By continuing you agree to our terms and conditions. Payments are processed by Cashfree.</p>
     </section>
   );
-}
 
-function BankPicker({ custom, bank, onBank }: { custom: CustomMethods | null; bank: string | null; onBank: (c: string | null) => void }) {
-  const [q, setQ] = useState("");
-  const btn = (active: boolean) =>
-    `rounded-lg border px-3 py-2.5 text-left text-xs font-medium transition-colors ${active ? "border-forest bg-leaf/5 text-forest" : "border-ink/15 text-ink/70 hover:border-ink/30"}`;
-
-  // Hosted fallback: popular banks pre-select a bank in Razorpay's window, "Other" lets them choose there.
-  if (!custom) {
-    return (
-      <>
-        <p className="mb-2 text-xs text-ink/50">Popular banks</p>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {POPULAR_BANKS.map((b) => (
-            <button key={b.code} type="button" onClick={() => onBank(b.code)} aria-pressed={bank === b.code} className={btn(bank === b.code)}>{b.name}</button>
-          ))}
-          <button type="button" onClick={() => onBank(null)} aria-pressed={bank === null} className={btn(bank === null)}>Other banks</button>
-        </div>
-      </>
-    );
-  }
-
-  const popular = POPULAR_BANKS.filter((pb) => custom.banks.some((b) => b.code === pb.code));
-  const list = custom.banks.filter((b) => b.name.toLowerCase().includes(q.trim().toLowerCase()));
-  return (
-    <>
-      {!q && popular.length > 0 && (
-        <>
-          <p className="mb-2 text-xs text-ink/50">Popular banks</p>
-          <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {popular.map((b) => (
-              <button key={b.code} type="button" onClick={() => onBank(b.code)} aria-pressed={bank === b.code} className={btn(bank === b.code)}>{b.name}</button>
-            ))}
-          </div>
-        </>
-      )}
-      <label htmlFor="bank-search" className="sr-only">Search banks</label>
-      <div className="relative mb-2">
-        <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink/40" />
-        <input id="bank-search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search all banks"
-          className="w-full rounded-lg border border-ink/15 py-2.5 pl-9 pr-3 text-sm outline-none focus:border-leaf" />
-      </div>
-      <div className="max-h-56 space-y-1 overflow-y-auto rounded-lg border border-ink/10 bg-white p-1">
-        {list.length === 0 && <p className="p-3 text-xs text-ink/50">No bank found.</p>}
-        {list.map((b) => (
-          <button key={b.code} type="button" onClick={() => onBank(b.code)} aria-pressed={bank === b.code}
-            className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm ${bank === b.code ? "bg-leaf/10 font-medium text-forest" : "text-ink/80 hover:bg-ink/5"}`}>
-            {b.name}{bank === b.code && <Check size={14} />}
-          </button>
-        ))}
-      </div>
-    </>
-  );
 }
 
 function MethodRow(props: {

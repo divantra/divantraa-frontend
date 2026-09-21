@@ -15,10 +15,8 @@ import { api } from "@/lib/api";
 import { getImageUrl } from "@/lib/image.utils";
 import { getAxiosErrorMessage } from "@/lib/errorUtils";
 import { useQuote, rupees } from "@/hooks/useQuote";
-import { openRazorpayCheckout, type OnlineMethod } from "@/lib/razorpay";
-import PaymentStep, { type PaymentChoice, isChoiceReady, isValidEmail } from "@/components/checkout/PaymentStep";
-import { initCustomCheckout, type CustomClient } from "@/lib/razorpayCustom";
-import { emptyCard, type CardValue } from "@/lib/card";
+import { loadCashfree, returnUrlFor, type CashfreeSDK } from "@/lib/cashfree";
+import PaymentStep, { type PaymentChoice, type Selection } from "@/components/checkout/PaymentStep";
 
 type Step = "address" | "payment";
 type Phase = "idle" | "creating" | "paying" | "confirming";
@@ -89,11 +87,9 @@ export default function CheckoutPage() {
   const [submitted,       setSubmitted]     = useState(false); // prevent double-submit
 
   const [choice,  setChoice]  = useState<PaymentChoice>("upi");
-  const [card,    setCard]    = useState<CardValue>(emptyCard);
-  const [bank,    setBank]    = useState<string | null>(null);
-  const [wallet,  setWallet]  = useState<string | null>(null);
-  const [email,   setEmail]   = useState("");
-  const [custom,  setCustom]  = useState<CustomClient | null>(null);
+  const [sdk,       setSdk]       = useState<CashfreeSDK | null>(null);
+  const [sdkStatus, setSdkStatus] = useState<"loading" | "ready" | "failed">("loading");
+  const [selection, setSelection] = useState<Selection>({ component: null, ready: false, hosted: false });
   const [phase,   setPhase]   = useState<Phase>("idle");
   const [notice,  setNotice]  = useState<string | null>(null);
 
@@ -104,22 +100,22 @@ export default function CheckoutPage() {
   const sub     = subtotal();
   const unavailable = quote?.lines.filter((l) => !l.available) ?? [];
 
-  // Try to switch on our own card / netbanking / wallet pages (Razorpay Custom Checkout).
-  // If it isn't enabled for the account or the script is blocked, `custom` stays null and
-  // we use Razorpay's hosted window for those methods instead.
-  const customTried = useRef(false);
+  // Load Cashfree's SDK (from its CDN) in the mode the server told us to use. If it can't load
+  // (blocked / offline / domain not enabled) the payment step falls back to Cashfree's hosted checkout.
+  const sdkTried = useRef(false);
   useEffect(() => {
-    const key = quote?.razorpayKeyId;
-    if (!key || !quote?.methods.online.enabled || customTried.current) return;
-    customTried.current = true;
-    initCustomCheckout(key).then(setCustom).catch(() => setCustom(null));
+    const mode = quote?.gateway?.mode;
+    if (!mode || !quote?.methods.online.enabled || sdkTried.current) return;
+    sdkTried.current = true;
+    loadCashfree(mode).then((s) => { setSdk(s); setSdkStatus(s ? "ready" : "failed"); }).catch(() => setSdkStatus("failed"));
   }, [quote]);
 
   // Returning from a failed 3-D Secure / bank redirect: show why, keep the cart.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("pay") === "failed") {
-      setNotice(`${params.get("reason") ?? "The payment was not completed."} No money was deducted — you can try again.`);
+      setNotice(`${(params.get("reason") ?? "The payment was not completed").replace(/[.!]?$/, ".")} No money was deducted — you can try again.`);
+      setStep("payment"); // straight back to the payment options, address is pre-selected
       router.replace("/checkout");
     }
   }, [router]);
@@ -205,28 +201,26 @@ export default function CheckoutPage() {
     };
   }
 
-  /** After a successful payment the webhook may still be in flight — wait for the server to confirm. */
-  async function waitForPaid(orderId: string): Promise<boolean> {
-    for (let i = 0; i < 10; i++) {
-      try {
-        const { data } = await api.get(`/orders/${orderId}`);
-        if (data.data.paymentStatus === "PAID") return true;
-      } catch { /* session may have lapsed; keep trying briefly */ }
-      await new Promise((r) => setTimeout(r, 3000));
-    }
-    return false;
+  /** "Other banks" / "More UPI options / QR": hand over to Cashfree's own checkout for this order. */
+  async function handleHostedCheckout() {
+    setChoice((c) => c);
+    setSelection({ component: null, ready: true, hosted: true });
+    await handlePayWith({ component: null, ready: true, hosted: true });
   }
 
   async function handlePay() {
+    await handlePayWith(selection);
+  }
+
+  async function handlePayWith(sel: Selection) {
     if (phase !== "idle") return;
     setOrderError(null);
     setNotice(null);
     const shippingBody = selectedAddress();
     if (!selectedAddr || !shippingBody) { setOrderError("Please select a delivery address."); return; }
     if (unavailable.length > 0) { setOrderError("Some items in your cart are no longer available. Please review your cart."); return; }
-    if (choice !== "cod" && !user?.email && !isValidEmail(email)) { setOrderError("Enter your email address for the payment receipt."); return; }
-    if (choice !== "cod" && !isChoiceReady({ selected: choice, custom: custom?.methods ?? null, card, bank, wallet })) {
-      setOrderError(choice === "card" ? "Please check your card details." : choice === "netbanking" ? "Please choose your bank." : "Please choose a wallet.");
+    if (choice !== "cod" && !sel.ready) {
+      setOrderError(choice === "card" ? "Please complete your card details." : choice === "netbanking" ? "Please choose your bank." : choice === "wallet" ? "Please enter your number and choose a wallet." : "Please choose how you'd like to pay with UPI.");
       return;
     }
 
@@ -243,61 +237,28 @@ export default function CheckoutPage() {
         return;
       }
 
-      // ── Online: server creates the order + Razorpay order for the exact amount ──
-      const { data } = await api.post("/orders/create-razorpay-order", shippingBody);
-      const o = data.data as {
-        orderId: string; orderNumber: string; razorpayOrderId: string; amount: number; currency: string; keyId: string;
-        prefill: { name?: string; contact?: string; email?: string };
-      };
-
-      // Our own card / netbanking / wallet pages: Razorpay redirects the browser to our
-      // /orders/payment-callback after 3-D Secure, which settles the order and lands on the confirmation page.
-      if (custom && (choice === "card" || choice === "netbanking" || choice === "wallet")) {
-        setPhase("paying");
-        custom.pay(
-          {
-            amount: o.amount, currency: o.currency, orderId: o.razorpayOrderId,
-            email: (user?.email || email).trim(), contact: o.prefill.contact ?? "",
-            callbackUrl: `${window.location.origin}/api/v1/orders/payment-callback`,
-            method: choice, card: choice === "card" ? card : undefined,
-            bank: bank ?? undefined, wallet: wallet ?? undefined,
-          },
-          (msg) => { setPhase("idle"); setNotice(`${msg.replace(/[.!]?$/, ".")} You can retry or choose another method.`); },
-        );
-        return;
-      }
+      // ── Online: the server creates our order + the Cashfree order for the exact amount ──
+      const { data } = await api.post("/orders/create-payment-order", shippingBody);
+      const o = data.data as { orderId: string; orderNumber: string; paymentSessionId: string };
+      const returnUrl = returnUrlFor(o.orderNumber);
+      if (!sdk) throw new Error("The secure payment window could not be loaded. Please check your connection and try again.");
 
       setPhase("paying");
-      await openRazorpayCheckout({
-        keyId: o.keyId, razorpayOrderId: o.razorpayOrderId, amount: o.amount, currency: o.currency,
-        method: choice as OnlineMethod, bank: bank ?? undefined,
-        prefill: o.prefill, orderNumber: o.orderNumber,
-        onDismiss: () => {
-          setPhase((p) => (p === "paying" ? "idle" : p));
-          setNotice("Payment cancelled. No money was deducted and your cart is saved — you can try again.");
-        },
-        onFailure: (msg) => setNotice(`${msg} You can retry in the payment window or choose another method.`),
-        onSuccess: async (res) => {
-          setPhase("confirming");
-          try {
-            await api.post("/orders/verify-payment", { orderId: o.orderId, ...res });
-            orderDone.current = true;
-            clearCart();
-            router.push(`/order-confirmation/${o.orderId}`);
-          } catch {
-            // Money left the customer's account but our confirmation call failed —
-            // the webhook will complete the order. Poll for it instead of scaring the user.
-            if (await waitForPaid(o.orderId)) {
-              orderDone.current = true;
-              clearCart();
-              router.push(`/order-confirmation/${o.orderId}`);
-            } else {
-              setPhase("idle");
-              setOrderError("We received your payment and are confirming your order. Check 'My Orders' in a few minutes — you will not be charged twice.");
-            }
-          }
-        },
-      });
+      // Cashfree-hosted fields (card / UPI / netbanking / wallet) or, as a fallback, Cashfree's hosted checkout.
+      const result = sel.hosted || !sel.component
+        ? await sdk.checkout({ paymentSessionId: o.paymentSessionId, returnUrl, redirectTarget: "_modal" })
+        : await sdk.pay({ paymentMethod: sel.component, paymentSessionId: o.paymentSessionId, returnUrl, redirect: "if_required" });
+
+      if (result.error) {
+        setPhase("idle");
+        setNotice(`${(result.error.message ?? "The payment could not be completed").replace(/[.!]?$/, ".")} You can retry or choose another method.`);
+      } else if (result.redirect) {
+        // The browser is being sent to the bank (3-D Secure); Cashfree brings it back to /payment/return.
+      } else {
+        // Finished without a redirect (e.g. UPI approved in-app, or the modal closed): ask our server what happened.
+        orderDone.current = true;
+        router.push(`/payment/return?order_id=${encodeURIComponent(o.orderNumber)}`);
+      }
     } catch (err) {
       setPhase("idle");
       setOrderError(getAxiosErrorMessage(err));
@@ -537,9 +498,9 @@ export default function CheckoutPage() {
               )}
               <PaymentStep
                 quote={quote} selected={choice} onSelect={(c) => { setChoice(c); setNotice(null); setOrderError(null); }}
-                custom={custom?.methods ?? null} card={card} onCard={setCard} bank={bank} onBank={setBank}
-                wallet={wallet} onWallet={setWallet} email={email} onEmail={setEmail} needsEmail={!user?.email}
+                sdk={sdk} sdkStatus={sdkStatus} onSelection={setSelection}
                 busy={phase !== "idle"} onPay={handlePay}
+                onHostedCheckout={handleHostedCheckout}
               />
             </>
           )}
