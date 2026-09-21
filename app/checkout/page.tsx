@@ -16,7 +16,9 @@ import { getImageUrl } from "@/lib/image.utils";
 import { getAxiosErrorMessage } from "@/lib/errorUtils";
 import { useQuote, rupees } from "@/hooks/useQuote";
 import { loadCashfree, returnUrlFor, type CashfreeSDK } from "@/lib/cashfree";
-import PaymentStep, { type PaymentChoice, type Selection } from "@/components/checkout/PaymentStep";
+import PaymentStep, { type PaymentChoice, type PayRequest } from "@/components/checkout/PaymentStep";
+import type { QrState } from "@/components/checkout/QrCard";
+import { startInlinePayment, fetchPayStatus } from "@/lib/payMethods";
 
 type Step = "address" | "payment";
 type Phase = "idle" | "creating" | "paying" | "confirming";
@@ -89,7 +91,10 @@ export default function CheckoutPage() {
   const [choice,  setChoice]  = useState<PaymentChoice>("upi");
   const [sdk,       setSdk]       = useState<CashfreeSDK | null>(null);
   const [sdkStatus, setSdkStatus] = useState<"loading" | "ready" | "failed">("loading");
-  const [selection, setSelection] = useState<Selection>({ component: null, ready: false, hosted: false });
+  const [request,   setRequest]   = useState<PayRequest | null>(null);
+  const [qr,        setQr]        = useState<QrState>({ status: "idle" });
+  // A payment that is in progress outside this page (QR scanned / UPI request sent / UPI app opened).
+  const [waiting,   setWaiting]   = useState<null | { orderNumber: string; kind: "qr" | "collect" | "intent"; label?: string }>(null);
   const [phase,   setPhase]   = useState<Phase>("idle");
   const [notice,  setNotice]  = useState<string | null>(null);
 
@@ -154,6 +159,19 @@ export default function CheckoutPage() {
     }
   }, [addresses, selectedAddr]);
 
+  // Returning customers with a saved address go straight to payment; only customers with no saved
+  // address see the address form. ("Change" still takes you back to it.)
+  const autoAdvanced = useRef(false);
+  useEffect(() => {
+    if (autoAdvanced.current || addrData === undefined) return;
+    autoAdvanced.current = true;
+    if (addrData.length > 0) {
+      const def = addrData.find((a) => a.isDefault) ?? addrData[0];
+      setSelectedAddr((cur) => cur ?? def.id);
+      setStep("payment");
+    }
+  }, [addrData]);
+
   // Save new address mutation
   const saveAddress = useMutation({
     mutationFn: (data: AddressForm) => api.post("/addresses", data).then((r) => r.data.data),
@@ -201,35 +219,106 @@ export default function CheckoutPage() {
     };
   }
 
-  /** "Other banks" / "More UPI options / QR": hand over to Cashfree's own checkout for this order. */
-  async function handleHostedCheckout() {
-    setChoice((c) => c);
-    setSelection({ component: null, ready: true, hosted: true });
-    await handlePayWith({ component: null, ready: true, hosted: true });
-  }
-
-  async function handlePay() {
-    await handlePayWith(selection);
-  }
-
-  async function handlePayWith(sel: Selection) {
-    if (phase !== "idle") return;
+  /** Shared checks before any payment starts. Returns the shipping body, or null after showing the reason. */
+  function preflight() {
     setOrderError(null);
     setNotice(null);
     const shippingBody = selectedAddress();
-    if (!selectedAddr || !shippingBody) { setOrderError("Please select a delivery address."); return; }
-    if (unavailable.length > 0) { setOrderError("Some items in your cart are no longer available. Please review your cart."); return; }
-    if (choice !== "cod" && !sel.ready) {
-      setOrderError(choice === "card" ? "Please complete your card details." : choice === "netbanking" ? "Please choose your bank." : choice === "wallet" ? "Please enter your number and choose a wallet." : "Please choose how you'd like to pay with UPI.");
-      return;
+    if (!selectedAddr || !shippingBody) { setOrderError("Please select a delivery address."); return null; }
+    if (unavailable.length > 0) { setOrderError("Some items in your cart are no longer available. Please review your cart."); return null; }
+    return shippingBody;
+  }
+
+  /** Create (or re-use) our order and the matching Cashfree order for the current cart. */
+  async function prepareOrder(shippingBody: NonNullable<ReturnType<typeof selectedAddress>>) {
+    await syncCartToServer();
+    const { data } = await api.post("/orders/create-payment-order", shippingBody);
+    return data.data as { orderId: string; orderNumber: string; paymentSessionId: string };
+  }
+
+  function stopWaiting() {
+    setWaiting(null);
+    setQr((q) => (q.status === "shown" ? { status: "idle" } : q));
+  }
+
+  // While the customer pays in a UPI app / scans the QR, ask OUR server (which asks Cashfree) every 3 s.
+  useEffect(() => {
+    if (!waiting) return;
+    let cancelled = false;
+    let tries = 0;
+    const timer = setInterval(async () => {
+      if (cancelled) return;
+      tries++;
+      try {
+        const st = await fetchPayStatus(waiting.orderNumber);
+        if (cancelled) return;
+        if (st.status === "PAID") {
+          cancelled = true;
+          clearInterval(timer);
+          orderDone.current = true;
+          clearCart();
+          router.replace(`/order-confirmation/${st.orderId}?paid=1`);
+          return;
+        }
+        if (st.status === "FAILED" || st.status === "EXPIRED") {
+          cancelled = true;
+          clearInterval(timer);
+          setWaiting(null);
+          setQr({ status: "idle" });
+          setNotice(st.status === "FAILED"
+            ? `${st.reason.replace(/[.!]?$/, ".")} You can retry or choose another method.`
+            : "The payment window expired. Please try again.");
+          return;
+        }
+      } catch { /* network hiccup: keep polling */ }
+      if (tries >= 200) { cancelled = true; clearInterval(timer); stopWaiting(); }
+    }, 3000);
+    return () => { cancelled = true; clearInterval(timer); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [waiting]);
+
+  /** "Click to show QR": create the order, ask Cashfree for a QR, show it inline and wait for the payment. */
+  async function showQr() {
+    if (phase !== "idle") return;
+    const shippingBody = preflight();
+    if (!shippingBody) return;
+    setQr({ status: "loading" });
+    try {
+      const o = await prepareOrder(shippingBody);
+      const r = await startInlinePayment(o.orderNumber, { method: "upi_qr" });
+      if (r.kind !== "qr") throw new Error("Unexpected response");
+      setQr({ status: "shown", image: r.qrImage, expiresAt: Date.now() + r.expiresInSeconds * 1000 });
+      setWaiting({ orderNumber: o.orderNumber, kind: "qr" });
+    } catch (err) {
+      setQr({ status: "error", error: getAxiosErrorMessage(err) });
     }
+  }
+
+  function qrExpired() {
+    setQr((q) => (q.status === "shown" ? { status: "expired" } : q));
+    setWaiting((w) => (w?.kind === "qr" ? null : w));
+  }
+
+  /** Cashfree's own checkout for this order (any bank, any UPI app) — also the fallback when hosted fields can't load. */
+  function handleHostedCheckout() {
+    return runRequest({ kind: "hosted" });
+  }
+
+  function handlePay() {
+    if (request) return runRequest(request);
+  }
+
+  async function runRequest(req: PayRequest) {
+    if (phase !== "idle") return;
+    const shippingBody = preflight();
+    if (!shippingBody) return;
 
     setPhase("creating");
+    setQr((q) => (q.status === "shown" ? { status: "idle" } : q)); // choosing another way to pay hides an open QR
     try {
-      await syncCartToServer();
-
       // ── Cash on delivery ────────────────────────────────────
-      if (choice === "cod") {
+      if (req.kind === "cod") {
+        await syncCartToServer();
         const { data } = await api.post("/orders/create-cod-order", shippingBody);
         orderDone.current = true;
         clearCart();
@@ -237,27 +326,57 @@ export default function CheckoutPage() {
         return;
       }
 
-      // ── Online: the server creates our order + the Cashfree order for the exact amount ──
-      const { data } = await api.post("/orders/create-payment-order", shippingBody);
-      const o = data.data as { orderId: string; orderNumber: string; paymentSessionId: string };
-      const returnUrl = returnUrlFor(o.orderNumber);
-      if (!sdk) throw new Error("The secure payment window could not be loaded. Please check your connection and try again.");
+      // ── Online ──────────────────────────────────────────────
+      const o = await prepareOrder(shippingBody);
 
-      setPhase("paying");
-      // Cashfree-hosted fields (card / UPI / netbanking / wallet) or, as a fallback, Cashfree's hosted checkout.
-      const result = sel.hosted || !sel.component
-        ? await sdk.checkout({ paymentSessionId: o.paymentSessionId, returnUrl, redirectTarget: "_modal" })
-        : await sdk.pay({ paymentMethod: sel.component, paymentSessionId: o.paymentSessionId, returnUrl, redirect: "if_required" });
-
-      if (result.error) {
-        setPhase("idle");
-        setNotice(`${(result.error.message ?? "The payment could not be completed").replace(/[.!]?$/, ".")} You can retry or choose another method.`);
-      } else if (result.redirect) {
-        // The browser is being sent to the bank (3-D Secure); Cashfree brings it back to /payment/return.
-      } else {
-        // Finished without a redirect (e.g. UPI approved in-app, or the modal closed): ask our server what happened.
-        orderDone.current = true;
-        router.push(`/payment/return?order_id=${encodeURIComponent(o.orderNumber)}`);
+      switch (req.kind) {
+        case "upi_collect": {
+          await startInlinePayment(o.orderNumber, { method: "upi_collect", upiId: req.upiId });
+          setWaiting({ orderNumber: o.orderNumber, kind: "collect", label: req.upiId });
+          setPhase("idle");
+          return;
+        }
+        case "upi_intent": {
+          const r = await startInlinePayment(o.orderNumber, { method: "upi_intent" });
+          if (r.kind !== "intent") throw new Error("Unexpected response");
+          const link = r.links[req.app as keyof typeof r.links] ?? r.links.default;
+          if (!link) throw new Error("That UPI app isn't available right now. Please try another way to pay.");
+          setWaiting({ orderNumber: o.orderNumber, kind: "intent" });
+          setPhase("idle");
+          window.location.href = link; // opens the UPI app; we keep polling for the result
+          return;
+        }
+        case "netbanking":
+        case "wallet": {
+          const r = await startInlinePayment(
+            o.orderNumber,
+            req.kind === "netbanking" ? { method: "netbanking", bankCode: req.bankCode } : { method: "wallet", provider: req.provider, phone: req.phone },
+          );
+          if (r.kind !== "redirect") throw new Error("Unexpected response");
+          setPhase("paying");
+          window.location.assign(r.url); // bank / wallet page; Cashfree returns the customer to /payment/return
+          return;
+        }
+        case "card":
+        case "hosted": {
+          if (!sdk) throw new Error("The secure payment window could not be loaded. Please check your connection and try again.");
+          const returnUrl = returnUrlFor(o.orderNumber);
+          setPhase("paying");
+          const result = req.kind === "card"
+            ? await sdk.pay({ paymentMethod: req.component, paymentSessionId: o.paymentSessionId, returnUrl, redirect: "if_required" })
+            : await sdk.checkout({ paymentSessionId: o.paymentSessionId, returnUrl, redirectTarget: "_modal" });
+          if (result.error) {
+            setPhase("idle");
+            setNotice(`${(result.error.message ?? "The payment could not be completed").replace(/[.!]?$/, ".")} You can retry or choose another method.`);
+          } else if (result.redirect) {
+            // The browser is being sent to the bank (3-D Secure); Cashfree brings it back to /payment/return.
+          } else {
+            // Finished without a redirect (e.g. the window was closed): ask our server what happened.
+            orderDone.current = true;
+            router.push(`/payment/return?order_id=${encodeURIComponent(o.orderNumber)}`);
+          }
+          return;
+        }
       }
     } catch (err) {
       setPhase("idle");
@@ -496,10 +615,25 @@ export default function CheckoutPage() {
                   <AlertCircle size={15} className="mt-0.5 shrink-0" /> {orderError}
                 </div>
               )}
+              {waiting && waiting.kind !== "qr" && (
+                <div role="status" className="flex items-start gap-3 rounded-xl border border-forest/30 bg-leaf/5 p-4 text-sm">
+                  <Loader2 size={18} className="mt-0.5 shrink-0 animate-spin text-forest" />
+                  <div className="flex-1">
+                    <p className="font-medium text-ink">
+                      {waiting.kind === "collect" ? `Payment request sent to ${waiting.label}` : "Complete the payment in your UPI app"}
+                    </p>
+                    <p className="mt-0.5 text-xs text-ink/60">
+                      {waiting.kind === "collect" ? "Open your UPI app and approve it." : "Come back to this page after paying."} This page updates automatically.
+                    </p>
+                  </div>
+                  <button type="button" onClick={stopWaiting} className="text-xs font-medium text-forest underline">Cancel</button>
+                </div>
+              )}
               <PaymentStep
                 quote={quote} selected={choice} onSelect={(c) => { setChoice(c); setNotice(null); setOrderError(null); }}
-                sdk={sdk} sdkStatus={sdkStatus} onSelection={setSelection}
-                busy={phase !== "idle"} onPay={handlePay}
+                sdk={sdk} sdkStatus={sdkStatus} onRequest={setRequest}
+                busy={phase !== "idle" || (!!waiting && waiting.kind !== "qr")} onPay={handlePay}
+                qr={qr} onShowQr={showQr} onQrExpired={qrExpired}
                 onHostedCheckout={handleHostedCheckout}
               />
             </>
