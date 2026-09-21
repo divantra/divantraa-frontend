@@ -7,6 +7,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useUiStore } from "@/store/useUiStore";
 import { useCartStore } from "@/store/useCartStore";
+import { applyOtpInput, applyOtpPaste } from "@/lib/otp";
 import { useSendOtp, useResendOtp, useVerifyOtp } from "@/hooks/useAuth";
 import { ProfileStep } from "./ProfileStep";
 import { getAxiosErrorMessage, getAxiosErrorStatus } from "@/lib/errorUtils";
@@ -100,15 +101,10 @@ export function LoginModal() {
     });
   }
 
-  function handleDigitChange(index: number, value: string) {
-    const char = value.replace(/\D/g, "").slice(-1);
-    const next = [...digits];
-    next[index] = char;
+  // Shared by typing, pasting a whole code, and SMS autofill.
+  function commitDigits(next: string[], focusIndex: number) {
     setDigits(next);
-
-    // Advance focus
-    const nextEl = document.getElementById(`modal-otp-${index + 1}`);
-    if (char && nextEl) nextEl.focus();
+    document.getElementById(`modal-otp-${focusIndex}`)?.focus();
 
     // Auto-verify when all filled
     if (next.every((d) => d !== "")) {
@@ -134,6 +130,18 @@ export function LoginModal() {
         }
       );
     }
+  }
+
+  function handleDigitChange(index: number, value: string) {
+    const r = applyOtpInput(digits, index, value, OTP_LENGTH);
+    commitDigits(r.digits, r.focusIndex);
+  }
+
+  function handleDigitPaste(index: number, e: React.ClipboardEvent<HTMLInputElement>) {
+    const r = applyOtpPaste(digits, index, e.clipboardData.getData("text"), OTP_LENGTH);
+    if (!r) return;
+    e.preventDefault();
+    commitDigits(r.digits, r.focusIndex);
   }
 
   function handleResend() {
@@ -273,9 +281,10 @@ export function LoginModal() {
                               id={`modal-otp-${i}`}
                               type="tel"
                               inputMode="numeric"
-                              maxLength={1}
+                              autoComplete={i === 0 ? "one-time-code" : "off"}
                               value={digit}
                               onChange={(e) => handleDigitChange(i, e.target.value)}
+                              onPaste={(e) => handleDigitPaste(i, e)}
                               onKeyDown={(e) => {
                                 if (e.key === "Backspace" && !digits[i] && i > 0) {
                                   document.getElementById(`modal-otp-${i - 1}`)?.focus();
