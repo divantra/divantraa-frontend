@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { Pencil } from "lucide-react";
 import { useSendOtp, useResendOtp, useVerifyOtp } from "@/hooks/useAuth";
 import { getAxiosErrorMessage } from "@/lib/errorUtils";
+import { applyOtpInput, applyOtpPaste } from "@/lib/otp";
 
 interface OtpStepProps {
   phone: string;
@@ -68,14 +69,9 @@ export function OtpStep({ phone, onEditPhone, onVerified }: OtpStepProps) {
   }, [isComplete, code]);
 
   function handleDigitChange(index: number, value: string) {
-    const char = value.replace(/\D/g, "").slice(-1);
-    const next = [...digits];
-    next[index] = char;
-    setDigits(next);
-
-    if (char && index < OTP_LENGTH - 1) {
-      inputsRef.current[index + 1]?.focus();
-    }
+    const r = applyOtpInput(digits, index, value, OTP_LENGTH);
+    setDigits(r.digits);
+    inputsRef.current[r.focusIndex]?.focus();
   }
 
   function handleKeyDown(index: number, e: React.KeyboardEvent<HTMLInputElement>) {
@@ -84,13 +80,12 @@ export function OtpStep({ phone, onEditPhone, onVerified }: OtpStepProps) {
     }
   }
 
-  function handlePaste(e: React.ClipboardEvent<HTMLInputElement>) {
-    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, OTP_LENGTH);
-    if (pasted.length === OTP_LENGTH) {
-      e.preventDefault();
-      setDigits(pasted.split(""));
-      inputsRef.current[OTP_LENGTH - 1]?.focus();
-    }
+  function handlePaste(index: number, e: React.ClipboardEvent<HTMLInputElement>) {
+    const r = applyOtpPaste(digits, index, e.clipboardData.getData("text"), OTP_LENGTH);
+    if (!r) return;
+    e.preventDefault();
+    setDigits(r.digits);
+    inputsRef.current[r.focusIndex]?.focus();
   }
 
   function handleResend() {
@@ -140,7 +135,7 @@ export function OtpStep({ phone, onEditPhone, onVerified }: OtpStepProps) {
         <Pencil size={13} /> Edit number
       </button>
 
-      <div className="flex gap-2.5 justify-start" onPaste={handlePaste}>
+      <div className="flex gap-2.5 justify-start">
         {digits.map((digit, i) => (
           <input
             key={i}
@@ -149,9 +144,10 @@ export function OtpStep({ phone, onEditPhone, onVerified }: OtpStepProps) {
             }}
             type="tel"
             inputMode="numeric"
-            maxLength={1}
+            autoComplete={i === 0 ? "one-time-code" : "off"}
             value={digit}
             onChange={(e) => handleDigitChange(i, e.target.value)}
+            onPaste={(e) => handlePaste(i, e)}
             onKeyDown={(e) => handleKeyDown(i, e)}
             className={`h-14 w-11 rounded-xl border-2 text-center text-2xl font-semibold text-ink outline-none transition-colors bg-white ${
               verifyOtp.isError
