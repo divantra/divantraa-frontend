@@ -46,7 +46,7 @@ interface AdminOrder {
   shippingLine1: string; shippingLine2: string | null;
   shippingCity: string; shippingState: string; shippingPincode: string; shippingLandmark: string | null;
   items: OrderItem[];
-  statusHistory: StatusHistoryEntry[];
+  statusHistory?: StatusHistoryEntry[];
   user: { id: string; name: string | null; mobile: string; email: string | null };
   capturedAmount?: number | string; refundedAmount?: number | string;
   display?: { code: string; label: string; tone: string; hint?: string };
@@ -505,17 +505,17 @@ export default function AdminPage() {
                       </div>
 
                       {/* Status timeline */}
-                      {order.statusHistory.length > 0 && (
+                      {(order.statusHistory?.length ?? 0) > 0 && (
                         <div>
                           <p className="text-xs font-semibold text-ink/40 uppercase tracking-wider mb-3">Status History</p>
                           <div className="relative space-y-0">
-                            {order.statusHistory.map((h, i) => {
+                            {(order.statusHistory ?? []).map((h, i) => {
                               const c = STATUS_CONFIG[h.status] ?? STATUS_CONFIG.PENDING;
                               return (
                                 <div key={h.id} className="flex gap-3 items-start pb-3 last:pb-0">
                                   <div className="flex flex-col items-center">
                                     <div className={`h-6 w-6 rounded-full flex items-center justify-center border ${c.color}`}>{c.icon}</div>
-                                    {i < order.statusHistory.length - 1 && <div className="w-px flex-1 bg-ink/10 my-1 min-h-[12px]" />}
+                                    {i < (order.statusHistory?.length ?? 0) - 1 && <div className="w-px flex-1 bg-ink/10 my-1 min-h-[12px]" />}
                                   </div>
                                   <div className="flex-1 min-w-0 pt-0.5">
                                     <p className="text-xs font-medium text-ink">{c.label}</p>
