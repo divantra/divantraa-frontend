@@ -7,13 +7,14 @@ import {
   Plus, Trash2, Package, ChevronDown, ChevronUp, RefreshCw,
   Users, ShieldCheck, ShieldOff, Search, ShoppingBag,
   Truck, CheckCircle2, XCircle, Clock, AlertCircle,
-  MapPin, User as UserIcon, Banknote, ExternalLink,
+  MapPin, User as UserIcon, Banknote, ExternalLink, Wallet,
 } from "lucide-react";
 import Image from "next/image";
 import { api } from "@/lib/api";
 import { useAuthStore } from "@/store/useAuthStore";
 import type { Product } from "@/types/product";
 import { getAxiosErrorMessage } from "@/lib/errorUtils";
+import PaymentsPanel, { RefundBox } from "./PaymentsPanel";
 
 // ── Types ─────────────────────────────────────────────────────
 
@@ -47,6 +48,9 @@ interface AdminOrder {
   items: OrderItem[];
   statusHistory: StatusHistoryEntry[];
   user: { id: string; name: string | null; mobile: string; email: string | null };
+  capturedAmount?: number | string; refundedAmount?: number | string;
+  display?: { code: string; label: string; tone: string; hint?: string };
+  refunds?: { status: string; reason: string; amount: number | string }[];
 }
 
 interface OrderMeta { total: number; page: number; limit: number; pages: number }
@@ -65,7 +69,7 @@ const emptyForm: NewProductForm = {
 
 // ── Status config ──────────────────────────────────────────────
 
-type AdminTab = "orders" | "products" | "users";
+type AdminTab = "orders" | "payments" | "products" | "users";
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
   PENDING:    { label: "Pending",    color: "bg-amber-100 text-amber-700 border-amber-200",   icon: <Clock size={12} /> },
@@ -298,6 +302,7 @@ export default function AdminPage() {
       <div className="flex gap-1 mb-6 border-b border-ink/10">
         {([
           { key: "orders",   label: "Orders",   icon: <ShoppingBag size={15} />, adminOnly: false },
+          { key: "payments", label: "Payments", icon: <Wallet size={15} />,      adminOnly: false },
           { key: "products", label: "Products", icon: <Package size={15} />,     adminOnly: true  },
           { key: "users",    label: "Users",    icon: <Users size={15} />,       adminOnly: true  },
         ] as const).map(({ key, label, icon, adminOnly }) => {
@@ -407,7 +412,7 @@ export default function AdminPage() {
                       {/* Status */}
                       <div className="shrink-0">
                         <span className={`flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full border ${cfg.color}`}>
-                          {cfg.icon}{cfg.label}
+                          {cfg.icon}{order.display?.label ?? cfg.label}
                         </span>
                       </div>
                     </div>
@@ -527,6 +532,24 @@ export default function AdminPage() {
                         </div>
                       )}
 
+                      {/* Refunds on this order */}
+                      {(order.refunds?.length ?? 0) > 0 && (
+                        <div>
+                          <p className="text-xs font-semibold text-ink/40 uppercase tracking-wider mb-2">Refunds</p>
+                          <div className="space-y-1">
+                            {order.refunds!.map((r, i) => (
+                              <p key={i} className="text-xs text-ink/70">
+                                ₹{Number(r.amount).toFixed(2)} · {r.reason.replace(/_/g, " ").toLowerCase()} · <span className="font-medium">{r.status}</span>
+                              </p>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {isAdmin && order.paymentMethod === "ONLINE" && order.paymentStatus === "PAID" && (
+                        <RefundBox orderId={order.id} total={order.total} captured={order.capturedAmount ?? order.total} refunded={order.refundedAmount ?? 0}
+                          onDone={() => { qc.invalidateQueries({ queryKey: ["admin-orders"] }); qc.invalidateQueries({ queryKey: ["admin-refunds"] }); }} />
+                      )}
+
                       {/* Action buttons */}
                       {actions.length > 0 && (
                         <div className="flex flex-wrap gap-2 pt-2 border-t border-ink/5">
@@ -567,6 +590,8 @@ export default function AdminPage() {
           )}
         </div>
       )}
+
+      {adminTab === "payments" && <PaymentsPanel isAdmin={isAdmin} />}
 
       {/* ═══════════════════════════════════════════════════════════
           PRODUCTS TAB
