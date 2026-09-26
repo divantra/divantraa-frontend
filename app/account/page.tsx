@@ -77,7 +77,16 @@ interface Order {
   items:           OrderItem[];
   statusHistory:   StatusHistoryEntry[];
   display?:        { code: string; label: string; tone: "neutral" | "info" | "success" | "warning" | "danger"; hint?: string };
-  refunds?:        { status: string; reason: string; amount: number | string }[];
+  refunds?:        CustomerRefund[];
+}
+
+interface RefundStep { key: string; label: string; at: string | null; state: "done" | "current" | "todo"; detail?: string }
+interface CustomerRefund {
+  reference: string; amount: number;
+  status: "REQUESTED" | "APPROVED" | "IN_PROGRESS" | "REFUNDED" | "DELAYED" | "DECLINED";
+  title: string; isCancellation: boolean; destination: string; arn: string | null; instant: boolean;
+  expectedFrom: string | null; expectedTo: string | null; declineReason: string | null;
+  timeline: RefundStep[];
 }
 
 interface Address {
@@ -405,6 +414,85 @@ function ProfileSection({ user, updateProfile }: { user: any; updateProfile: any
   );
 }
 
+// ── Refund tracking ────────────────────────────────────────────
+
+const REFUND_CHIP: Record<CustomerRefund["status"], { label: string; cls: string }> = {
+  REQUESTED:   { label: "Awaiting approval", cls: "bg-amber-100 text-amber-700" },
+  APPROVED:    { label: "Approved",          cls: "bg-blue-100 text-blue-700" },
+  IN_PROGRESS: { label: "In progress",       cls: "bg-blue-100 text-blue-700" },
+  REFUNDED:    { label: "Refunded",          cls: "bg-green-100 text-green-700" },
+  DELAYED:     { label: "Being resolved",    cls: "bg-amber-100 text-amber-700" },
+  DECLINED:    { label: "Not approved",      cls: "bg-ink/10 text-ink/60" },
+};
+
+const fmtDay  = (d: string) => new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+const fmtWhen = (d: string) => new Date(d).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
+
+/** One line for the order list: the refund's state at a glance, without opening the order. */
+function refundSummary(r: CustomerRefund): string | null {
+  const amt = `₹${Number(r.amount).toFixed(0)}`;
+  switch (r.status) {
+    case "REQUESTED":   return `Cancellation requested · refund of ${amt} once approved`;
+    case "APPROVED":
+    case "IN_PROGRESS": return r.expectedTo ? `Refund of ${amt} in progress · expected by ${fmtDay(r.expectedTo)}` : `Refund of ${amt} in progress`;
+    case "REFUNDED":    return `Refund of ${amt} completed`;
+    case "DELAYED":     return `Refund of ${amt} is being processed`;
+    case "DECLINED":    return r.isCancellation ? "Cancellation request closed" : null;
+  }
+}
+
+function RefundCard({ refund, onWithdraw, withdrawing }: { refund: CustomerRefund; onWithdraw?: () => void; withdrawing?: boolean }) {
+  const chip = REFUND_CHIP[refund.status];
+  return (
+    <div className="rounded-xl border border-ink/10 bg-white p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold text-ink">{refund.title}</p>
+          <p className="text-xs text-ink/50 mt-0.5">₹{Number(refund.amount).toFixed(2)} · to {refund.destination}</p>
+        </div>
+        <span className={`text-[11px] font-medium px-2.5 py-1 rounded-full whitespace-nowrap ${chip.cls}`}>{chip.label}</span>
+      </div>
+
+      <ol className="mt-4 space-y-0">
+        {refund.timeline.map((step, i) => (
+          <li key={step.key} className="flex gap-3">
+            <div className="flex flex-col items-center">
+              <span className={`mt-0.5 h-4 w-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                step.state === "done" ? "bg-leaf border-leaf" : step.state === "current" ? "border-amber-500 bg-white ring-4 ring-amber-100" : "border-ink/20 bg-white"
+              }`}>
+                {step.state === "done" && <span className="text-[9px] leading-none text-white">✓</span>}
+              </span>
+              {i < refund.timeline.length - 1 && <span className={`w-0.5 flex-1 my-1 min-h-[18px] ${step.state === "done" ? "bg-leaf/40" : "bg-ink/10"}`} />}
+            </div>
+            <div className="pb-4 min-w-0">
+              <p className={`text-sm ${step.state === "todo" ? "text-ink/40" : "text-ink font-medium"}`}>{step.label}</p>
+              {step.at && step.state === "done" && <p className="text-xs text-ink/40">{fmtWhen(step.at)}</p>}
+              {step.detail && step.state !== "todo" && <p className={`text-xs mt-0.5 ${step.key === "declined" ? "text-red-600" : "text-ink/50"}`}>{step.detail}</p>}
+              {step.detail && step.state === "todo" && <p className="text-xs mt-0.5 text-ink/30">{step.detail}</p>}
+            </div>
+          </li>
+        ))}
+      </ol>
+
+      {refund.expectedFrom && refund.expectedTo && (
+        <p className="rounded-lg bg-blue-50 px-3 py-2 text-xs text-blue-800">
+          Expected in {refund.destination} between <span className="font-semibold">{fmtDay(refund.expectedFrom)}</span> and <span className="font-semibold">{fmtDay(refund.expectedTo)}</span>.
+        </p>
+      )}
+      {refund.status === "REFUNDED" && refund.arn && (
+        <p className="mt-1 text-xs text-ink/50">Not in your account yet? Quote the bank reference number above when you ask your bank.</p>
+      )}
+      <p className="mt-3 text-[10px] text-ink/30 font-mono">Ref {refund.reference}</p>
+
+      {onWithdraw && refund.status === "REQUESTED" && (
+        <button onClick={onWithdraw} disabled={withdrawing} className="mt-3 text-xs font-medium text-ink/60 underline hover:text-ink disabled:opacity-50">
+          {withdrawing ? "Withdrawing…" : "Changed your mind? Withdraw request"}
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ── Orders section ─────────────────────────────────────────────
 
 function OrdersSection() {
@@ -430,6 +518,15 @@ function OrdersSection() {
       setNotice((res.data as { message?: string })?.message ?? null);
     },
     onError: (err) => setCancelError(getAxiosErrorMessage(err)),
+  });
+
+  const withdraw = useMutation({
+    mutationFn: (orderId: string) => api.delete(`/orders/${orderId}/cancellation-request`),
+    onSuccess: (res) => {
+      qc.invalidateQueries({ queryKey: ["my-orders"] });
+      setNotice((res.data as { message?: string })?.message ?? null);
+    },
+    onError: (err) => setNotice(getAxiosErrorMessage(err)),
   });
 
   const fmtDate = (d: string | null) =>
@@ -497,6 +594,11 @@ function OrdersSection() {
                   <p className="text-xs text-ink/40 mt-0.5">
                     {new Date(order.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
                   </p>
+                  {(() => {
+                    const latest = order.refunds?.[order.refunds.length - 1];
+                    const line = latest ? refundSummary(latest) : null;
+                    return line ? <p className="text-xs font-medium text-amber-700 mt-1">{line}</p> : null;
+                  })()}
                 </div>
                 <div className="flex items-center gap-3">
                   <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${pillColor}`}>
@@ -515,6 +617,17 @@ function OrdersSection() {
                       order.display.tone === "warning" ? "bg-amber-50 border-amber-200 text-amber-800" : "bg-blue-50 border-blue-200 text-blue-800"
                     }`}>
                       {order.display.hint}
+                    </div>
+                  )}
+
+                  {/* Refund tracking */}
+                  {order.refunds && order.refunds.length > 0 && (
+                    <div className="space-y-3">
+                      <p className="text-xs font-semibold text-ink/40 uppercase tracking-wider">Refund status</p>
+                      {[...order.refunds].reverse().map((r) => (
+                        <RefundCard key={r.reference} refund={r}
+                          onWithdraw={() => withdraw.mutate(order.id)} withdrawing={withdraw.isPending} />
+                      ))}
                     </div>
                   )}
 
@@ -562,10 +675,15 @@ function OrdersSection() {
                   )}
 
                   {/* Cancellation reason */}
-                  {order.cancelReason && (
+                  {order.status === "CANCELLED" && (
                     <div className="p-3 bg-red-50 border border-red-200 rounded-xl">
-                      <p className="text-xs font-semibold text-red-600 mb-1">Cancellation Reason</p>
-                      <p className="text-sm text-red-700">{order.cancelReason}</p>
+                      <p className="text-xs font-semibold text-red-600 mb-1">
+                        Order cancelled{order.cancelledAt ? ` on ${fmtWhen(order.cancelledAt)}` : ""}
+                      </p>
+                      {order.cancelReason && <p className="text-sm text-red-700">{order.cancelReason}</p>}
+                      {order.paymentMethod === "ONLINE" && order.paymentStatus === "PAID" && order.refunds?.length === 0 && (
+                        <p className="text-xs text-red-700/80 mt-1">Your payment will be refunded — we&apos;ll update this page as soon as it starts.</p>
+                      )}
                     </div>
                   )}
 
@@ -622,12 +740,26 @@ function OrdersSection() {
                     </div>
                   </div>
 
+                  {(order.refunds ?? []).some((r) => r.status === "REFUNDED") && (
+                    <div className="flex justify-between text-sm text-green-700 font-medium -mt-3">
+                      <span>Refunded</span>
+                      <span>₹{(order.refunds ?? []).filter((r) => r.status === "REFUNDED").reduce((a, r) => a + Number(r.amount), 0).toFixed(2)}</span>
+                    </div>
+                  )}
+
                   {/* Delivery address */}
                   <div className="p-3 bg-ink/[0.03] rounded-lg text-xs text-ink/50">
                     <p className="font-medium text-ink/70 mb-0.5">Deliver to: {order.shippingName}</p>
                     <p>{order.shippingLine1}{order.shippingLine2 ? `, ${order.shippingLine2}` : ""}</p>
                     <p>{order.shippingCity}, {order.shippingState} — {order.shippingPincode}</p>
                   </div>
+
+                  {!kind && order.paymentMethod === "ONLINE" && order.paymentStatus === "PAID" && ["PROCESSING", "SHIPPED"].includes(order.status) && (
+                    <p className="text-xs text-ink/50">
+                      This order is already {order.status === "SHIPPED" ? "shipped" : "being prepared"}, so it can no longer be cancelled online.
+                      Contact support if you need help.
+                    </p>
+                  )}
 
                   {/* Cancel order */}
                   {kind && (
@@ -639,7 +771,7 @@ function OrdersSection() {
                           </p>
                           <p className="text-xs text-red-500 mb-3">
                             {kind === "request"
-                              ? `Your order stays active until we approve the request. Once approved, ₹${Number(order.total).toFixed(0)} is refunded to your original payment method (5–7 business days).`
+                              ? `Your order stays active until we approve the request. Once approved, ₹${Number(order.total).toFixed(0)} is refunded to your original payment method (usually 5–7 business days).`
                               : "This cannot be undone. Stock will be restored."}
                           </p>
                           <textarea
