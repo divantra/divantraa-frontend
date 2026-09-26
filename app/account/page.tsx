@@ -41,6 +41,10 @@ interface OrderItem {
   price: number;
   quantity: number;
   images: string[];
+  // per-line (Amazon-style "order line"): its own status and what it cost after its discount share
+  status?: "PENDING" | "CONFIRMED" | "PROCESSING" | "SHIPPED" | "DELIVERED" | "CANCELLED";
+  lineTotal?: number | string;
+  display?: { code: string; label: string; tone: "neutral" | "info" | "success" | "warning" | "danger" };
 }
 
 interface StatusHistoryEntry {
@@ -75,6 +79,7 @@ interface Order {
   shippingState:   string;
   shippingPincode: string;
   items:           OrderItem[];
+  lines?:          OrderItem[];
   statusHistory:   StatusHistoryEntry[];
   display?:        { code: string; label: string; tone: "neutral" | "info" | "success" | "warning" | "danger"; hint?: string };
   refunds?:        CustomerRefund[];
@@ -85,6 +90,7 @@ interface CustomerRefund {
   reference: string; amount: number;
   status: "REQUESTED" | "APPROVED" | "IN_PROGRESS" | "REFUNDED" | "DELAYED" | "DECLINED";
   title: string; isCancellation: boolean; destination: string; arn: string | null; instant: boolean;
+  items?: { title: string; variantTitle: string; quantity: number; amount: number }[];
   expectedFrom: string | null; expectedTo: string | null; declineReason: string | null;
   timeline: RefundStep[];
 }
@@ -124,11 +130,19 @@ const TONE_COLOR: Record<string, string> = {
   danger:  "bg-red-100 text-red-600",
 };
 
-/** Can the customer start a cancellation? COD: before dispatch. Paid online: request (admin approves the refund). */
+const orderLines = (o: Order): OrderItem[] => o.lines ?? o.items;
+
+/** Items the customer can still cancel: COD, or paid online; before packing; not already in a pending request. */
+function cancellableLines(o: Order): OrderItem[] {
+  const paidOnline = o.paymentMethod === "ONLINE" && ["PAID", "PARTIALLY_REFUNDED"].includes(o.paymentStatus);
+  if (o.paymentMethod === "ONLINE" && !paidOnline) return [];
+  return orderLines(o).filter((l) => (l.status === "PENDING" || l.status === "CONFIRMED") && l.display?.code !== "CANCELLATION_REQUESTED");
+}
+
+/** COD: cancelled at once. Paid online: a request the admin approves (then refunded). */
 function cancelKind(o: Order): "instant" | "request" | null {
-  if (o.display && ["CANCELLATION_REQUESTED", "REFUND_IN_PROGRESS", "REFUND_DELAYED", "REFUNDED", "CANCELLED"].includes(o.display.code)) return null;
-  if (o.paymentMethod === "ONLINE") return o.paymentStatus === "PAID" && ["PAID", "CONFIRMED"].includes(o.status) ? "request" : null;
-  return ["PENDING", "CONFIRMED"].includes(o.status) ? "instant" : null;
+  if (cancellableLines(o).length === 0) return null;
+  return o.paymentMethod === "ONLINE" ? "request" : "instant";
 }
 
 const TRACKING_STEPS = ["Placed", "Confirmed", "Processing", "Shipped", "Delivered"];
@@ -449,6 +463,11 @@ function RefundCard({ refund, onWithdraw, withdrawing }: { refund: CustomerRefun
         <div>
           <p className="text-sm font-semibold text-ink">{refund.title}</p>
           <p className="text-xs text-ink/50 mt-0.5">₹{Number(refund.amount).toFixed(2)} · to {refund.destination}</p>
+          {refund.items && refund.items.length > 0 && (
+            <p className="text-xs text-ink/60 mt-1">
+              For: {refund.items.map((i) => `${i.title}${i.variantTitle ? ` (${i.variantTitle})` : ""} × ${i.quantity}`).join(", ")}
+            </p>
+          )}
         </div>
         <span className={`text-[11px] font-medium px-2.5 py-1 rounded-full whitespace-nowrap ${chip.cls}`}>{chip.label}</span>
       </div>
@@ -501,6 +520,7 @@ function OrdersSection() {
   const [cancelReason, setCancelReason] = useState("");
   const [cancelError,  setCancelError]  = useState<string | null>(null);
   const [notice,       setNotice]       = useState<string | null>(null);
+  const [picked,       setPicked]       = useState<Set<string>>(new Set());
   const qc = useQueryClient();
 
   const { data: orders, isLoading, isError } = useQuery<Order[]>({
@@ -510,18 +530,19 @@ function OrdersSection() {
   });
 
   const cancelOrder = useMutation({
-    mutationFn: ({ orderId, reason }: { orderId: string; reason: string }) =>
-      api.post(`/orders/${orderId}/cancel`, { cancelReason: reason }),
+    mutationFn: ({ orderId, reason, lineIds }: { orderId: string; reason: string; lineIds?: string[] }) =>
+      api.post(`/orders/${orderId}/cancel`, { cancelReason: reason, ...(lineIds ? { lineIds } : {}) }),
     onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ["my-orders"] });
-      setCancellingId(null); setCancelReason(""); setCancelError(null);
+      setCancellingId(null); setCancelReason(""); setCancelError(null); setPicked(new Set());
       setNotice((res.data as { message?: string })?.message ?? null);
     },
     onError: (err) => setCancelError(getAxiosErrorMessage(err)),
   });
 
   const withdraw = useMutation({
-    mutationFn: (orderId: string) => api.delete(`/orders/${orderId}/cancellation-request`),
+    mutationFn: ({ orderId, reference }: { orderId: string; reference: string }) =>
+      api.delete(`/orders/${orderId}/cancellation-request`, { params: { ref: reference } }),
     onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ["my-orders"] });
       setNotice((res.data as { message?: string })?.message ?? null);
@@ -589,7 +610,7 @@ function OrdersSection() {
                     )}
                   </div>
                   <p className="text-sm font-medium text-ink mt-0.5">
-                    {order.items.length} item{order.items.length !== 1 ? "s" : ""} · ₹{Number(order.total).toFixed(0)}
+                    {orderLines(order).filter((l) => l.status !== "CANCELLED").length || orderLines(order).length} item{(orderLines(order).filter((l) => l.status !== "CANCELLED").length || orderLines(order).length) !== 1 ? "s" : ""} · ₹{Number(order.total).toFixed(0)}
                   </p>
                   <p className="text-xs text-ink/40 mt-0.5">
                     {new Date(order.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
@@ -626,7 +647,7 @@ function OrdersSection() {
                       <p className="text-xs font-semibold text-ink/40 uppercase tracking-wider">Refund status</p>
                       {[...order.refunds].reverse().map((r) => (
                         <RefundCard key={r.reference} refund={r}
-                          onWithdraw={() => withdraw.mutate(order.id)} withdrawing={withdraw.isPending} />
+                          onWithdraw={() => withdraw.mutate({ orderId: order.id, reference: r.reference })} withdrawing={withdraw.isPending} />
                       ))}
                     </div>
                   )}
@@ -691,25 +712,30 @@ function OrdersSection() {
                   <div>
                     <p className="text-xs font-semibold text-ink/40 uppercase tracking-wider mb-3">Items</p>
                     <div className="space-y-3">
-                      {order.items.map((item) => (
-                        <div key={item.id} className="flex gap-3 items-start">
-                          <div className="h-14 w-14 rounded-lg bg-ink/5 overflow-hidden relative shrink-0">
-                            {item.images?.[0]
-                              ? <Image src={item.images[0]} alt={item.title} fill className="object-cover" />
-                              : <div className="w-full h-full flex items-center justify-center"><Package size={18} className="text-ink/20" /></div>
-                            }
+                      {orderLines(order).map((item) => {
+                        const cancelled = item.status === "CANCELLED";
+                        return (
+                          <div key={item.id} className={`flex gap-3 items-start ${cancelled ? "opacity-60" : ""}`}>
+                            <div className="h-14 w-14 rounded-lg bg-ink/5 overflow-hidden relative shrink-0">
+                              {item.images?.[0]
+                                ? <Image src={item.images[0]} alt={item.title} fill className="object-cover" />
+                                : <div className="w-full h-full flex items-center justify-center"><Package size={18} className="text-ink/20" /></div>
+                              }
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-sm font-medium text-ink truncate ${cancelled ? "line-through" : ""}`}>{item.title}</p>
+                              <p className="text-xs text-ink/50">{item.variantTitle}</p>
+                              {item.display && (
+                                <span className={`mt-1 inline-block text-[10px] font-medium px-2 py-0.5 rounded-full ${TONE_COLOR[item.display.tone]}`}>{item.display.label}</span>
+                              )}
+                            </div>
+                            <div className="text-right shrink-0">
+                              <p className="text-sm font-medium text-ink">₹{Number(item.lineTotal ?? Number(item.price) * item.quantity).toFixed(0)}</p>
+                              <p className="text-xs text-ink/40">Qty {item.quantity}</p>
+                            </div>
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-ink truncate">{item.title}</p>
-                            <p className="text-xs text-ink/50">{item.variantTitle}</p>
-                            <p className="text-xs text-ink/40 font-mono">{item.sku}</p>
-                          </div>
-                          <div className="text-right shrink-0">
-                            <p className="text-sm font-medium text-ink">₹{Number(item.price) * item.quantity}</p>
-                            <p className="text-xs text-ink/40">Qty {item.quantity}</p>
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
 
@@ -728,9 +754,10 @@ function OrdersSection() {
                     </div>
                     <div className="flex justify-between text-xs text-ink/40 pt-0.5">
                       <span>Payment</span>
-                      <span className={order.paymentStatus === "PAID" ? "text-green-600 font-medium" : ""}>
+                      <span className={order.paymentStatus === "PAID" || order.paymentStatus === "PARTIALLY_REFUNDED" ? "text-green-600 font-medium" : ""}>
                         {order.paymentMethod} · {
                           order.paymentStatus === "PAID" ? "Paid"
+                          : order.paymentStatus === "PARTIALLY_REFUNDED" ? "Paid · partly refunded"
                           : order.paymentStatus === "REFUNDED" ? "Refunded"
                           : order.paymentStatus === "FAILED" ? "Not completed"
                           : order.paymentMethod === "COD" ? "Pay on delivery"
@@ -754,56 +781,83 @@ function OrdersSection() {
                     <p>{order.shippingCity}, {order.shippingState} — {order.shippingPincode}</p>
                   </div>
 
-                  {!kind && order.paymentMethod === "ONLINE" && order.paymentStatus === "PAID" && ["PROCESSING", "SHIPPED"].includes(order.status) && (
+                  {!kind && order.paymentMethod === "ONLINE" && (order.paymentStatus === "PAID" || order.paymentStatus === "PARTIALLY_REFUNDED") && ["PROCESSING", "SHIPPED"].includes(order.status) && (
                     <p className="text-xs text-ink/50">
                       This order is already {order.status === "SHIPPED" ? "shipped" : "being prepared"}, so it can no longer be cancelled online.
                       Contact support if you need help.
                     </p>
                   )}
 
-                  {/* Cancel order */}
-                  {kind && (
-                    <div>
-                      {cancellingId === order.id ? (
-                        <div className="border border-red-200 bg-red-50 rounded-xl p-4">
-                          <p className="text-sm text-red-700 font-medium mb-1">
-                            {kind === "request" ? "Request cancellation & refund?" : "Cancel this order?"}
-                          </p>
-                          <p className="text-xs text-red-500 mb-3">
-                            {kind === "request"
-                              ? `Your order stays active until we approve the request. Once approved, ₹${Number(order.total).toFixed(0)} is refunded to your original payment method (usually 5–7 business days).`
-                              : "This cannot be undone. Stock will be restored."}
-                          </p>
-                          <textarea
-                            value={cancelReason}
-                            onChange={e => setCancelReason(e.target.value)}
-                            placeholder="Reason for cancelling (optional)…"
-                            rows={2}
-                            className="w-full text-xs border border-red-200 rounded-lg px-3 py-2 mb-3 bg-white focus:outline-none focus:ring-1 focus:ring-red-300 resize-none"
-                          />
-                          {cancelError && <p className="text-xs text-red-600 mb-2">{cancelError}</p>}
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => cancelOrder.mutate({ orderId: order.id, reason: cancelReason || "Cancelled by customer" })}
-                              disabled={cancelOrder.isPending}
-                              className="bg-red-500 text-white text-xs font-medium rounded-lg px-4 py-2 hover:bg-red-600 disabled:opacity-50"
-                            >
-                              {cancelOrder.isPending ? "Sending…" : kind === "request" ? "Yes, request cancellation" : "Yes, cancel"}
-                            </button>
-                            <button onClick={() => { setCancellingId(null); setCancelReason(""); setCancelError(null); }}
-                              className="border border-ink/10 text-ink text-xs font-medium rounded-lg px-4 py-2 hover:bg-ink/5">
-                              Keep order
-                            </button>
+                  {/* Cancel items / order */}
+                  {kind && (() => {
+                    const cancellable = cancellableLines(order);
+                    const active = orderLines(order).filter((l) => l.status !== "CANCELLED");
+                    const chosen = cancellable.filter((l) => picked.has(l.id));
+                    const wholeOrder = chosen.length > 0 && chosen.length === active.length;
+                    return (
+                      <div>
+                        {cancellingId === order.id ? (
+                          <div className="border border-red-200 bg-red-50 rounded-xl p-4">
+                            <p className="text-sm text-red-700 font-medium mb-2">
+                              {kind === "request" ? "Which items do you want to cancel?" : "Which items do you want to cancel?"}
+                            </p>
+                            <div className="space-y-2 mb-3">
+                              {cancellable.map((l) => (
+                                <label key={l.id} className="flex items-center gap-2 text-sm text-ink cursor-pointer">
+                                  <input type="checkbox" className="h-4 w-4 accent-red-500" checked={picked.has(l.id)}
+                                    onChange={(e) => setPicked((prev) => { const n = new Set(prev); if (e.target.checked) n.add(l.id); else n.delete(l.id); return n; })} />
+                                  <span className="flex-1 truncate">{l.title} <span className="text-ink/40">· {l.variantTitle} × {l.quantity}</span></span>
+                                  <span className="text-ink/60">₹{Number(l.lineTotal ?? Number(l.price) * l.quantity).toFixed(0)}</span>
+                                </label>
+                              ))}
+                              {cancellable.length > 1 && (
+                                <button type="button" className="text-xs text-red-600 underline"
+                                  onClick={() => setPicked(chosen.length === cancellable.length ? new Set() : new Set(cancellable.map((l) => l.id)))}>
+                                  {chosen.length === cancellable.length ? "Clear selection" : "Select all"}
+                                </button>
+                              )}
+                            </div>
+                            <p className="text-xs text-red-500 mb-3">
+                              {kind === "request"
+                                ? `Your order stays as it is until we approve the request. Once approved, the amount for the selected item${chosen.length === 1 ? "" : "s"}${wholeOrder ? " and shipping" : ""} is refunded to your original payment method (usually 5–7 business days).`
+                                : "This cannot be undone. Stock will be restored."}
+                            </p>
+                            <textarea
+                              value={cancelReason}
+                              onChange={e => setCancelReason(e.target.value)}
+                              placeholder="Reason for cancelling (optional)…"
+                              rows={2}
+                              className="w-full text-xs border border-red-200 rounded-lg px-3 py-2 mb-3 bg-white focus:outline-none focus:ring-1 focus:ring-red-300 resize-none"
+                            />
+                            {cancelError && <p className="text-xs text-red-600 mb-2">{cancelError}</p>}
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => cancelOrder.mutate({
+                                  orderId: order.id, reason: cancelReason || "Cancelled by customer",
+                                  lineIds: wholeOrder ? undefined : chosen.map((l) => l.id),
+                                })}
+                                disabled={cancelOrder.isPending || chosen.length === 0}
+                                className="bg-red-500 text-white text-xs font-medium rounded-lg px-4 py-2 hover:bg-red-600 disabled:opacity-50"
+                              >
+                                {cancelOrder.isPending ? "Sending…"
+                                  : wholeOrder ? (kind === "request" ? "Request order cancellation" : "Cancel order")
+                                  : (kind === "request" ? "Request cancellation of selected" : "Cancel selected items")}
+                              </button>
+                              <button onClick={() => { setCancellingId(null); setCancelReason(""); setCancelError(null); setPicked(new Set()); }}
+                                className="border border-ink/10 text-ink text-xs font-medium rounded-lg px-4 py-2 hover:bg-ink/5">
+                                Keep everything
+                              </button>
+                            </div>
                           </div>
-                        </div>
-                      ) : (
-                        <button onClick={() => { setCancellingId(order.id); setCancelError(null); }}
-                          className="text-sm text-red-400 hover:text-red-600 font-medium hover:underline">
-                          {kind === "request" ? "Request cancellation & refund" : "Cancel order"}
-                        </button>
-                      )}
-                    </div>
-                  )}
+                        ) : (
+                          <button onClick={() => { setCancellingId(order.id); setCancelError(null); setPicked(new Set(cancellable.map((l) => l.id))); }}
+                            className="text-sm text-red-400 hover:text-red-600 font-medium hover:underline">
+                            {kind === "request" ? "Cancel items / request refund" : "Cancel items / order"}
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
             </div>
