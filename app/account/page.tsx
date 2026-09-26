@@ -76,6 +76,8 @@ interface Order {
   shippingPincode: string;
   items:           OrderItem[];
   statusHistory:   StatusHistoryEntry[];
+  display?:        { code: string; label: string; tone: "neutral" | "info" | "success" | "warning" | "danger"; hint?: string };
+  refunds?:        { status: string; reason: string; amount: number | string }[];
 }
 
 interface Address {
@@ -104,6 +106,21 @@ const STATUS_META: Record<string, { label: string; color: string; step: number; 
   CANCELLED:  { label: "Cancelled",     color: "bg-red-100 text-red-600",       step: -1 },
   REFUNDED:   { label: "Refunded",      color: "bg-ink/10 text-ink/60",         step: -1 },
 };
+
+const TONE_COLOR: Record<string, string> = {
+  neutral: "bg-ink/10 text-ink/60",
+  info:    "bg-blue-100 text-blue-700",
+  success: "bg-green-100 text-green-700",
+  warning: "bg-amber-100 text-amber-700",
+  danger:  "bg-red-100 text-red-600",
+};
+
+/** Can the customer start a cancellation? COD: before dispatch. Paid online: request (admin approves the refund). */
+function cancelKind(o: Order): "instant" | "request" | null {
+  if (o.display && ["CANCELLATION_REQUESTED", "REFUND_IN_PROGRESS", "REFUND_DELAYED", "REFUNDED", "CANCELLED"].includes(o.display.code)) return null;
+  if (o.paymentMethod === "ONLINE") return o.paymentStatus === "PAID" && ["PAID", "CONFIRMED"].includes(o.status) ? "request" : null;
+  return ["PENDING", "CONFIRMED"].includes(o.status) ? "instant" : null;
+}
 
 const TRACKING_STEPS = ["Placed", "Confirmed", "Processing", "Shipped", "Delivered"];
 
@@ -395,6 +412,7 @@ function OrdersSection() {
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [cancelReason, setCancelReason] = useState("");
   const [cancelError,  setCancelError]  = useState<string | null>(null);
+  const [notice,       setNotice]       = useState<string | null>(null);
   const qc = useQueryClient();
 
   const { data: orders, isLoading, isError } = useQuery<Order[]>({
@@ -406,9 +424,10 @@ function OrdersSection() {
   const cancelOrder = useMutation({
     mutationFn: ({ orderId, reason }: { orderId: string; reason: string }) =>
       api.post(`/orders/${orderId}/cancel`, { cancelReason: reason }),
-    onSuccess: () => {
+    onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ["my-orders"] });
       setCancellingId(null); setCancelReason(""); setCancelError(null);
+      setNotice((res.data as { message?: string })?.message ?? null);
     },
     onError: (err) => setCancelError(getAxiosErrorMessage(err)),
   });
@@ -432,9 +451,18 @@ function OrdersSection() {
 
   return (
     <SectionShell title={`Order History (${orders.length})`}>
+      {notice && (
+        <div className="mb-4 flex items-start justify-between gap-3 rounded-xl border border-green-200 bg-green-50 p-3 text-sm text-green-800">
+          <span>{notice}</span>
+          <button onClick={() => setNotice(null)} className="text-green-700/60 hover:text-green-800" aria-label="Dismiss">×</button>
+        </div>
+      )}
       <div className="space-y-4">
         {orders.map((order) => {
           const meta      = STATUS_META[order.status] ?? STATUS_META.PENDING;
+          const pillLabel = order.display?.label ?? meta.label;
+          const pillColor = order.display ? TONE_COLOR[order.display.tone] : meta.color;
+          const kind      = cancelKind(order);
           const isOpen    = expandedId === order.id;
           const displayId = order.orderNumber ?? `#${order.id.slice(0, 8).toUpperCase()}`;
 
@@ -471,8 +499,8 @@ function OrdersSection() {
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${meta.color}`}>
-                    {meta.label}
+                  <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${pillColor}`}>
+                    {pillLabel}
                   </span>
                   {isOpen ? <ChevronUp size={16} className="text-ink/30" /> : <ChevronDown size={16} className="text-ink/30" />}
                 </div>
@@ -481,6 +509,14 @@ function OrdersSection() {
               {/* Expanded detail */}
               {isOpen && (
                 <div className="border-t border-ink/5 px-4 py-4 bg-ink/[0.01] space-y-5">
+
+                  {order.display?.hint && order.display.tone !== "success" && (
+                    <div className={`p-3 rounded-xl text-sm border ${
+                      order.display.tone === "warning" ? "bg-amber-50 border-amber-200 text-amber-800" : "bg-blue-50 border-blue-200 text-blue-800"
+                    }`}>
+                      {order.display.hint}
+                    </div>
+                  )}
 
                   {/* Tracking stepper (with dates) */}
                   {meta.step >= 0 && (
@@ -575,7 +611,13 @@ function OrdersSection() {
                     <div className="flex justify-between text-xs text-ink/40 pt-0.5">
                       <span>Payment</span>
                       <span className={order.paymentStatus === "PAID" ? "text-green-600 font-medium" : ""}>
-                        {order.paymentMethod} · {order.paymentStatus === "PAID" ? "Paid" : order.paymentStatus === "PENDING" ? "Pay on delivery" : order.paymentStatus}
+                        {order.paymentMethod} · {
+                          order.paymentStatus === "PAID" ? "Paid"
+                          : order.paymentStatus === "REFUNDED" ? "Refunded"
+                          : order.paymentStatus === "FAILED" ? "Not completed"
+                          : order.paymentMethod === "COD" ? "Pay on delivery"
+                          : "Awaiting payment"
+                        }
                       </span>
                     </div>
                   </div>
@@ -588,12 +630,18 @@ function OrdersSection() {
                   </div>
 
                   {/* Cancel order */}
-                  {meta.cancellable && (
+                  {kind && (
                     <div>
                       {cancellingId === order.id ? (
                         <div className="border border-red-200 bg-red-50 rounded-xl p-4">
-                          <p className="text-sm text-red-700 font-medium mb-1">Cancel this order?</p>
-                          <p className="text-xs text-red-500 mb-3">This cannot be undone. Stock will be restored.</p>
+                          <p className="text-sm text-red-700 font-medium mb-1">
+                            {kind === "request" ? "Request cancellation & refund?" : "Cancel this order?"}
+                          </p>
+                          <p className="text-xs text-red-500 mb-3">
+                            {kind === "request"
+                              ? `Your order stays active until we approve the request. Once approved, ₹${Number(order.total).toFixed(0)} is refunded to your original payment method (5–7 business days).`
+                              : "This cannot be undone. Stock will be restored."}
+                          </p>
                           <textarea
                             value={cancelReason}
                             onChange={e => setCancelReason(e.target.value)}
@@ -608,7 +656,7 @@ function OrdersSection() {
                               disabled={cancelOrder.isPending}
                               className="bg-red-500 text-white text-xs font-medium rounded-lg px-4 py-2 hover:bg-red-600 disabled:opacity-50"
                             >
-                              {cancelOrder.isPending ? "Cancelling…" : "Yes, cancel"}
+                              {cancelOrder.isPending ? "Sending…" : kind === "request" ? "Yes, request cancellation" : "Yes, cancel"}
                             </button>
                             <button onClick={() => { setCancellingId(null); setCancelReason(""); setCancelError(null); }}
                               className="border border-ink/10 text-ink text-xs font-medium rounded-lg px-4 py-2 hover:bg-ink/5">
@@ -619,7 +667,7 @@ function OrdersSection() {
                       ) : (
                         <button onClick={() => { setCancellingId(order.id); setCancelError(null); }}
                           className="text-sm text-red-400 hover:text-red-600 font-medium hover:underline">
-                          Cancel order
+                          {kind === "request" ? "Request cancellation & refund" : "Cancel order"}
                         </button>
                       )}
                     </div>

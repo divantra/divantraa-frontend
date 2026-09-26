@@ -23,6 +23,7 @@ export default function PaymentReturnPage() {
   const clearCart = useCartStore((s) => s.clearCart);
   const [slow, setSlow] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [refunding, setRefunding] = useState(false);
 
   useEffect(() => {
     const orderNumber = new URLSearchParams(window.location.search).get("order_id");
@@ -35,7 +36,7 @@ export default function PaymentReturnPage() {
     async function poll() {
       for (let i = 0; i < MAX_POLLS && !cancelled; i++) {
         try {
-          const { data } = await api.get<{ data: { status: Status; orderId?: string; reason?: string } }>(
+          const { data } = await api.get<{ data: { status: Status; orderId?: string; reason?: string; refunding?: boolean } }>(
             `/orders/payment-status/${encodeURIComponent(orderNumber!)}`,
           );
           const st = data.data;
@@ -46,6 +47,11 @@ export default function PaymentReturnPage() {
           }
           if (st.status === "FAILED") {
             router.replace(`/checkout?pay=failed&reason=${encodeURIComponent(st.reason ?? "The payment could not be completed.")}`);
+            return;
+          }
+          if (st.status === "EXPIRED" && st.refunding) {
+            // Money arrived after the session expired and the items were gone: it is being refunded automatically.
+            setRefunding(true);
             return;
           }
           if (st.status === "EXPIRED") {
@@ -73,7 +79,20 @@ export default function PaymentReturnPage() {
 
   return (
     <main className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center px-6 text-center">
-      {error ? (
+      {refunding ? (
+        <>
+          <ShieldCheck size={40} className="mb-4 text-forest" />
+          <h1 className="font-display text-2xl text-ink">Your payment arrived after the session expired</h1>
+          <p className="mt-2 text-sm text-ink/60">
+            We couldn&apos;t hold your order any longer, so we&apos;re refunding the full amount to your original payment method
+            automatically. It usually shows up within 5–7 business days. You don&apos;t need to do anything.
+          </p>
+          <div className="mt-6 flex gap-3">
+            <Link href="/account?tab=orders" className="rounded-xl bg-forest px-5 py-3 text-sm font-semibold text-white">My Orders</Link>
+            <Link href="/" className="rounded-xl border-2 border-forest px-5 py-3 text-sm font-semibold text-forest">Continue shopping</Link>
+          </div>
+        </>
+      ) : error ? (
         <>
           <ShieldCheck size={40} className="mb-4 text-ink/30" />
           <h1 className="font-display text-2xl text-ink">{error}</h1>

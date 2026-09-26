@@ -275,7 +275,9 @@ export default function CheckoutPage() {
           setQr({ status: "idle" });
           setNotice(st.status === "FAILED"
             ? `${st.reason.replace(/[.!]?$/, ".")} You can retry or choose another method.`
-            : "The payment window expired. Please try again.");
+            : st.refunding
+              ? "Your payment arrived just after this session expired, so it is being refunded automatically (5–7 business days). Please place the order again."
+              : "The payment window expired. Please try again.");
           return;
         }
       } catch { /* network hiccup: keep polling */ }

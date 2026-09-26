@@ -62,7 +62,7 @@ export type PayStatus =
   | { status: "PAID"; orderId: string }
   | { status: "PENDING" }
   | { status: "FAILED"; reason: string }
-  | { status: "EXPIRED" };
+  | { status: "EXPIRED"; refunding?: boolean };
 
 export async function fetchPayStatus(orderNumber: string): Promise<PayStatus> {
   const { data } = await api.get<{ data: PayStatus }>(`/orders/payment-status/${encodeURIComponent(orderNumber)}`);
