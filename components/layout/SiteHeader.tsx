@@ -24,8 +24,8 @@ const LOGO = getImageUrl("public/Divanatraa-Logo.png");
 const NAV_LINKS = [
   { href: "/products",                            label: "All Products",      icon: <LayoutGrid size={16} /> },
   { href: "/products?category=cold-pressed-oils", label: "Newly Launched",   icon: <Flame      size={16} /> },
-  { href: "/products",                            label: "Oils",              icon: null },
-  { href: "/products",                            label: "Wood Pressed Oils", icon: null },
+  { href: "/products?category=wood-pressed-oils", label: "Wood Pressed Oils", icon: null },
+  { href: "/products?category=raw-wild-forest-honey", label: "Honey",        icon: null },
   { href: "/about",                               label: "About Us",          icon: <Info       size={16} /> },
   { href: "/contact",                             label: "Contact Us",        icon: <PhoneCall  size={16} /> },
 ];

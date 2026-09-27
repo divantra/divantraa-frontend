@@ -14,7 +14,7 @@ import { api } from "@/lib/api";
 import { useAuthStore } from "@/store/useAuthStore";
 import type { Product } from "@/types/product";
 import { getAxiosErrorMessage } from "@/lib/errorUtils";
-import PaymentsPanel, { RefundBox } from "./PaymentsPanel";
+import PaymentsPanel, { RefundBox, CancelLineBox } from "./PaymentsPanel";
 
 // ── Types ─────────────────────────────────────────────────────
 
@@ -27,6 +27,9 @@ interface AdminUser {
 interface OrderItem {
   id: string; title: string; variantTitle: string;
   sku: string; price: number; quantity: number; images: string[];
+  status?: "PENDING" | "CONFIRMED" | "PROCESSING" | "SHIPPED" | "DELIVERED" | "CANCELLED";
+  lineTotal?: number | string; refundedAmount?: number | string;
+  display?: { code: string; label: string; tone: string };
 }
 
 interface StatusHistoryEntry {
@@ -46,6 +49,7 @@ interface AdminOrder {
   shippingLine1: string; shippingLine2: string | null;
   shippingCity: string; shippingState: string; shippingPincode: string; shippingLandmark: string | null;
   items: OrderItem[];
+  lines?: OrderItem[];
   statusHistory?: StatusHistoryEntry[];
   user: { id: string; name: string | null; mobile: string; email: string | null };
   capturedAmount?: number | string; refundedAmount?: number | string;
@@ -86,6 +90,7 @@ const PAY_STATUS_CONFIG: Record<string, string> = {
   PENDING:  "bg-amber-50 text-amber-600",
   PAID:     "bg-green-50 text-green-700",
   FAILED:   "bg-red-50 text-red-600",
+  PARTIALLY_REFUNDED: "bg-amber-50 text-amber-700",
   REFUNDED: "bg-gray-50 text-gray-600",
 };
 
@@ -401,7 +406,7 @@ export default function AdminPage() {
                       {/* Items + total */}
                       <div className="text-right shrink-0 hidden sm:block">
                         <p className="text-sm text-ink">₹{Number(order.total).toFixed(0)}</p>
-                        <p className="text-xs text-ink/40">{order.items.length} item{order.items.length !== 1 ? "s" : ""}</p>
+                        <p className="text-xs text-ink/40">{(order.lines ?? order.items).length} item{(order.lines ?? order.items).length !== 1 ? "s" : ""}</p>
                       </div>
                       {/* Payment */}
                       <div className="shrink-0 hidden sm:block">
@@ -467,25 +472,40 @@ export default function AdminPage() {
                       <div>
                         <p className="text-xs font-semibold text-ink/40 uppercase tracking-wider mb-3">Items</p>
                         <div className="space-y-2.5">
-                          {order.items.map(item => (
-                            <div key={item.id} className="flex gap-3 items-start">
-                              <div className="h-14 w-14 rounded-lg bg-ink/5 overflow-hidden relative shrink-0">
-                                {item.images?.[0]
-                                  ? <Image src={item.images[0]} alt={item.title} fill className="object-cover" />
-                                  : <div className="w-full h-full flex items-center justify-center"><Package size={18} className="text-ink/20" /></div>
-                                }
+                          {(order.lines ?? order.items).map(item => {
+                            const cancelled = item.status === "CANCELLED";
+                            const cancellable = item.status === "PENDING" || item.status === "CONFIRMED" || item.status === "PROCESSING";
+                            const openRefund = item.display?.code === "CANCELLATION_REQUESTED";
+                            return (
+                              <div key={item.id} className={`flex gap-3 items-start ${cancelled ? "opacity-60" : ""}`}>
+                                <div className="h-14 w-14 rounded-lg bg-ink/5 overflow-hidden relative shrink-0">
+                                  {item.images?.[0]
+                                    ? <Image src={item.images[0]} alt={item.title} fill className="object-cover" />
+                                    : <div className="w-full h-full flex items-center justify-center"><Package size={18} className="text-ink/20" /></div>
+                                  }
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className={`text-sm font-medium text-ink ${cancelled ? "line-through" : ""}`}>{item.title}</p>
+                                  <p className="text-xs text-ink/50">{item.variantTitle}</p>
+                                  <p className="text-xs font-mono text-ink/30">{item.sku}</p>
+                                  {item.display && (
+                                    <span className={`mt-1 inline-block text-[10px] font-medium px-2 py-0.5 rounded-full ${
+                                      item.display.tone === "danger" ? "bg-red-100 text-red-600" : item.display.tone === "warning" ? "bg-amber-100 text-amber-700"
+                                      : item.display.tone === "success" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}`}>{item.display.label}</span>
+                                  )}
+                                  {isAdmin && cancellable && !openRefund && (order.paymentMethod === "COD" || order.paymentStatus === "PAID" || order.paymentStatus === "PARTIALLY_REFUNDED") && (
+                                    <CancelLineBox orderId={order.id} lineId={item.id} title={item.title}
+                                      onDone={() => { qc.invalidateQueries({ queryKey: ["admin-orders"] }); qc.invalidateQueries({ queryKey: ["admin-refunds"] }); }} />
+                                  )}
+                                </div>
+                                <div className="text-right shrink-0">
+                                  <p className="text-sm font-medium">₹{Number(item.lineTotal ?? Number(item.price) * item.quantity).toFixed(0)}</p>
+                                  <p className="text-xs text-ink/40">Qty {item.quantity} × ₹{Number(item.price)}</p>
+                                  {Number(item.refundedAmount ?? 0) > 0 && <p className="text-[10px] text-ink/40">refunded ₹{Number(item.refundedAmount).toFixed(0)}</p>}
+                                </div>
                               </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-ink">{item.title}</p>
-                                <p className="text-xs text-ink/50">{item.variantTitle}</p>
-                                <p className="text-xs font-mono text-ink/30">{item.sku}</p>
-                              </div>
-                              <div className="text-right shrink-0">
-                                <p className="text-sm font-medium">₹{Number(item.price) * item.quantity}</p>
-                                <p className="text-xs text-ink/40">Qty {item.quantity} × ₹{Number(item.price)}</p>
-                              </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
 
                         {/* Price summary */}
@@ -545,7 +565,7 @@ export default function AdminPage() {
                           </div>
                         </div>
                       )}
-                      {isAdmin && order.paymentMethod === "ONLINE" && order.paymentStatus === "PAID" && (
+                      {isAdmin && order.paymentMethod === "ONLINE" && (order.paymentStatus === "PAID" || order.paymentStatus === "PARTIALLY_REFUNDED") && (
                         <RefundBox orderId={order.id} total={order.total} captured={order.capturedAmount ?? order.total} refunded={order.refundedAmount ?? 0}
                           onDone={() => { qc.invalidateQueries({ queryKey: ["admin-orders"] }); qc.invalidateQueries({ queryKey: ["admin-refunds"] }); }} />
                       )}

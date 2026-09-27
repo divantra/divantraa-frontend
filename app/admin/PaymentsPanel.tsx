@@ -18,6 +18,7 @@ interface Health {
 interface RefundRow {
   id: string; refundId: string; amount: number | string; status: string; reason: string;
   note: string | null; failureReason: string | null; createdAt: string; attempts: number;
+  cfRefundId?: string | null; arn?: string | null; gatewayStatus?: string | null; statusDescription?: string | null;
   order: {
     id: string; orderNumber: string | null; total: number | string; status: string; paymentStatus: string;
     user: { name: string | null; mobile: string } | null;
@@ -149,6 +150,12 @@ export default function PaymentsPanel({ isAdmin }: { isAdmin: boolean }) {
                   </p>
                   {r.note && <p className="text-xs text-ink/60 mt-1">“{r.note}”</p>}
                   {r.failureReason && <p className="text-xs text-red-600 mt-1">{r.failureReason}</p>}
+                  {(r.cfRefundId || r.arn || r.gatewayStatus) && (
+                    <p className="text-[11px] font-mono text-ink/40 mt-1 break-all">
+                      {r.refundId}{r.cfRefundId ? ` · Cashfree ${r.cfRefundId}` : ""}{r.gatewayStatus ? ` · ${r.gatewayStatus}` : ""}{r.arn ? ` · ARN ${r.arn}` : ""}
+                    </p>
+                  )}
+                  {r.gatewayStatus === "ONHOLD" && <p className="text-xs text-amber-700 mt-1">On hold at Cashfree{r.statusDescription ? `: ${r.statusDescription}` : " (usually low balance)"}.</p>}
                 </div>
                 <div className="text-right shrink-0">
                   <p className="text-base font-semibold text-ink">{inr(r.amount)}</p>
@@ -248,6 +255,34 @@ export function RefundBox({ orderId, total, captured, refunded, onDone }: {
           {m.isPending ? "Sending…" : "Send refund"}
         </button>
         <button onClick={() => setOpen(false)} className="rounded-lg border border-ink/15 px-3 py-2 text-xs">Cancel</button>
+      </div>
+      {error && <p className="text-xs text-red-600">{error}</p>}
+    </div>
+  );
+}
+
+/** Cancel ONE item of an order (ADMIN). Paid online: its refund is created approved and sent; stock goes back. */
+export function CancelLineBox({ orderId, lineId, title, onDone }: { orderId: string; lineId: string; title: string; onDone: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const m = useMutation({
+    mutationFn: () => api.post(`/admin/orders/${orderId}/lines/cancel`, { lineIds: [lineId], reason: reason.trim() }),
+    onSuccess: () => { setOpen(false); setReason(""); setError(null); onDone(); },
+    onError: (e) => setError(getAxiosErrorMessage(e)),
+  });
+  if (!open) {
+    return <button onClick={() => setOpen(true)} className="mt-1 text-[11px] font-medium text-red-500 underline hover:text-red-600">Cancel this item</button>;
+  }
+  return (
+    <div className="mt-2 rounded-lg border border-red-200 bg-red-50 p-2 space-y-2">
+      <p className="text-[11px] text-red-700">Cancel &ldquo;{title}&rdquo;? Its stock goes back and, if paid online, its refund is sent to the customer.</p>
+      <div className="flex flex-col sm:flex-row gap-2">
+        <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Reason (required)"
+          className="flex-1 border border-red-200 rounded-lg px-2 py-1.5 text-xs bg-white" />
+        <button disabled={reason.trim().length < 3 || m.isPending} onClick={() => m.mutate()}
+          className="rounded-lg bg-red-500 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50">{m.isPending ? "Cancelling…" : "Confirm"}</button>
+        <button onClick={() => setOpen(false)} className="rounded-lg border border-ink/15 bg-white px-3 py-1.5 text-xs">Back</button>
       </div>
       {error && <p className="text-xs text-red-600">{error}</p>}
     </div>

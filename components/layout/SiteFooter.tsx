@@ -12,6 +12,8 @@ import {
 
 import { CartFooterBar } from "../cart/CartFooterBar";
 import { getImageUrl } from "@/lib/image.utils";
+import { api } from "@/lib/api";
+import { getAxiosErrorMessage } from "@/lib/errorUtils";
 
 const FOOTER_BG = getImageUrl("public/divantraa-footer-background-image.webp");
 
@@ -35,14 +37,25 @@ const policyLinks = [
 export function SiteFooter() {
   const [email, setEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);
+  const [subscribing, setSubscribing] = useState(false);
+  const [subscribeError, setSubscribeError] = useState<string | null>(null);
 
-  function handleSubscribe(e: React.FormEvent) {
+  async function handleSubscribe(e: React.FormEvent) {
     e.preventDefault();
 
     if (!email.trim() || !email.includes("@")) return;
 
-    setSubscribed(true);
-    setEmail("");
+    setSubscribing(true);
+    setSubscribeError(null);
+    try {
+      await api.post("/newsletter/subscribe", { email: email.trim() });
+      setSubscribed(true);
+      setEmail("");
+    } catch (err) {
+      setSubscribeError(getAxiosErrorMessage(err, "Couldn't subscribe right now. Please try again."));
+    } finally {
+      setSubscribing(false);
+    }
   }
 
   return (
@@ -148,11 +161,13 @@ export function SiteFooter() {
                   <button
                     type="submit"
                     aria-label="Subscribe"
+                    disabled={subscribing}
                     className="
                       w-[70px]
                       text-[28px]
                       text-white
                       hover:text-[#dfc77f]
+                      disabled:opacity-50
                     "
                   >
                     ↓
@@ -161,7 +176,12 @@ export function SiteFooter() {
 
                 {subscribed && (
                   <p className="mt-2 text-xs text-white/70">
-                    Thanks — you're on the list.
+                    Thanks — you&apos;re on the list.
+                  </p>
+                )}
+                {subscribeError && (
+                  <p className="mt-2 text-xs text-red-200">
+                    {subscribeError}
                   </p>
                 )}
 
@@ -334,85 +354,6 @@ export function SiteFooter() {
                 >
                   <X size={25} strokeWidth={2.2} />
                 </a>
-
-              </div>
-
-              {/* DOWNLOAD APP */}
-              <div className="mt-[28px]">
-
-                <p className="mb-[14px] text-[18px] font-medium text-[#dfc77f]">
-                  Download App
-                </p>
-
-                <div className="flex gap-[18px]">
-
-                  {/* GOOGLE PLAY */}
-                  <a
-                    href="#"
-                    className="
-                      flex
-                      h-[62px]
-                      w-[185px]
-                      items-center
-                      justify-center
-                      rounded-full
-                      bg-black
-                      text-white
-                    "
-                  >
-                    <div className="flex items-center gap-3">
-
-                      <span className="text-[28px]">
-                        ▶
-                      </span>
-
-                      <div className="leading-none">
-                        <div className="text-[8px] uppercase">
-                          Get it on
-                        </div>
-
-                        <div className="mt-1 text-[16px]">
-                          Google Play
-                        </div>
-                      </div>
-
-                    </div>
-                  </a>
-
-                  {/* APP STORE */}
-                  <a
-                    href="#"
-                    className="
-                      flex
-                      h-[62px]
-                      w-[185px]
-                      items-center
-                      justify-center
-                      rounded-full
-                      bg-black
-                      text-white
-                    "
-                  >
-                    <div className="flex items-center gap-3">
-
-                      <span className="text-[25px]">
-                        ●
-                      </span>
-
-                      <div className="leading-none">
-                        <div className="text-[8px]">
-                          Download on the
-                        </div>
-
-                        <div className="mt-1 text-[16px]">
-                          App Store
-                        </div>
-                      </div>
-
-                    </div>
-                  </a>
-
-                </div>
 
               </div>
 

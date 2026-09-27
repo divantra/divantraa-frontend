@@ -68,7 +68,7 @@ export default function OrderConfirmationPage({ params }: { params: Promise<{ id
     if (new URLSearchParams(window.location.search).get("paid") === "1") clearCart();
   }, [clearCart]);
   useEffect(() => {
-    if (order && (order.paymentMethod === "COD" || order.paymentStatus === "PAID")) clearCart();
+    if (order && (order.paymentMethod === "COD" || ["PAID", "PARTIALLY_REFUNDED"].includes(order.paymentStatus ?? ""))) clearCart();
   }, [order, clearCart]);
 
   if (isLoading) {
@@ -129,7 +129,7 @@ export default function OrderConfirmationPage({ params }: { params: Promise<{ id
             <p className="text-xs text-ink/50">
               {order.paymentMethod === "COD"
                 ? "Pay at the time of delivery"
-                : order.paymentStatus === "PAID"
+                : order.paymentStatus === "PAID" || order.paymentStatus === "PARTIALLY_REFUNDED"
                 ? "Payment received — thank you!"
                 : "Confirming your payment…"}
             </p>
