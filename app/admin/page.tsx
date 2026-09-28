@@ -405,7 +405,7 @@ export default function AdminPage() {
                       </div>
                       {/* Items + total */}
                       <div className="text-right shrink-0 hidden sm:block">
-                        <p className="text-sm text-ink">₹{Number(order.total).toFixed(0)}</p>
+                        <p className="text-sm text-ink">₹{Number(order.total).toFixed(2)}</p>
                         <p className="text-xs text-ink/40">{(order.lines ?? order.items).length} item{(order.lines ?? order.items).length !== 1 ? "s" : ""}</p>
                       </div>
                       {/* Payment */}
@@ -499,9 +499,9 @@ export default function AdminPage() {
                                   )}
                                 </div>
                                 <div className="text-right shrink-0">
-                                  <p className="text-sm font-medium">₹{Number(item.lineTotal ?? Number(item.price) * item.quantity).toFixed(0)}</p>
+                                  <p className="text-sm font-medium">₹{Number(item.lineTotal ?? Number(item.price) * item.quantity).toFixed(2)}</p>
                                   <p className="text-xs text-ink/40">Qty {item.quantity} × ₹{Number(item.price)}</p>
-                                  {Number(item.refundedAmount ?? 0) > 0 && <p className="text-[10px] text-ink/40">refunded ₹{Number(item.refundedAmount).toFixed(0)}</p>}
+                                  {Number(item.refundedAmount ?? 0) > 0 && <p className="text-[10px] text-ink/40">refunded ₹{Number(item.refundedAmount).toFixed(2)}</p>}
                                 </div>
                               </div>
                             );
@@ -510,7 +510,7 @@ export default function AdminPage() {
 
                         {/* Price summary */}
                         <div className="mt-4 border-t border-ink/5 pt-3 space-y-1 text-sm">
-                          <div className="flex justify-between text-ink/60"><span>Subtotal</span><span>₹{Number(order.subtotal).toFixed(0)}</span></div>
+                          <div className="flex justify-between text-ink/60"><span>Subtotal</span><span>₹{Number(order.subtotal).toFixed(2)}</span></div>
                           <div className="flex justify-between text-ink/60">
                             <span>Shipping</span>
                             <span>{Number(order.shippingFee) === 0 ? <span className="text-green-600">Free</span> : `₹${Number(order.shippingFee)}`}</span>
@@ -519,7 +519,7 @@ export default function AdminPage() {
                             <div className="flex justify-between text-ink/60"><span>COD Charge</span><span>₹{Number(order.codFee)}</span></div>
                           )}
                           <div className="flex justify-between font-semibold text-ink border-t border-ink/5 pt-1 mt-1">
-                            <span>Total</span><span>₹{Number(order.total).toFixed(0)}</span>
+                            <span>Total</span><span>₹{Number(order.total).toFixed(2)}</span>
                           </div>
                         </div>
                       </div>

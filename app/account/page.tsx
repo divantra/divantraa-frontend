@@ -444,7 +444,7 @@ const fmtWhen = (d: string) => new Date(d).toLocaleString("en-IN", { day: "numer
 
 /** One line for the order list: the refund's state at a glance, without opening the order. */
 function refundSummary(r: CustomerRefund): string | null {
-  const amt = `₹${Number(r.amount).toFixed(0)}`;
+  const amt = `₹${Number(r.amount).toFixed(2)}`;
   switch (r.status) {
     case "REQUESTED":   return `Cancellation requested · refund of ${amt} once approved`;
     case "APPROVED":
@@ -610,7 +610,7 @@ function OrdersSection() {
                     )}
                   </div>
                   <p className="text-sm font-medium text-ink mt-0.5">
-                    {orderLines(order).filter((l) => l.status !== "CANCELLED").length || orderLines(order).length} item{(orderLines(order).filter((l) => l.status !== "CANCELLED").length || orderLines(order).length) !== 1 ? "s" : ""} · ₹{Number(order.total).toFixed(0)}
+                    {orderLines(order).filter((l) => l.status !== "CANCELLED").length || orderLines(order).length} item{(orderLines(order).filter((l) => l.status !== "CANCELLED").length || orderLines(order).length) !== 1 ? "s" : ""} · ₹{Number(order.total).toFixed(2)}
                   </p>
                   <p className="text-xs text-ink/40 mt-0.5">
                     {new Date(order.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
@@ -730,7 +730,7 @@ function OrdersSection() {
                               )}
                             </div>
                             <div className="text-right shrink-0">
-                              <p className="text-sm font-medium text-ink">₹{Number(item.lineTotal ?? Number(item.price) * item.quantity).toFixed(0)}</p>
+                              <p className="text-sm font-medium text-ink">₹{Number(item.lineTotal ?? Number(item.price) * item.quantity).toFixed(2)}</p>
                               <p className="text-xs text-ink/40">Qty {item.quantity}</p>
                             </div>
                           </div>
@@ -741,7 +741,7 @@ function OrdersSection() {
 
                   {/* Price summary */}
                   <div className="border-t border-ink/5 pt-3 space-y-1 text-sm">
-                    <div className="flex justify-between text-ink/60"><span>Subtotal</span><span>₹{Number(order.subtotal).toFixed(0)}</span></div>
+                    <div className="flex justify-between text-ink/60"><span>Subtotal</span><span>₹{Number(order.subtotal).toFixed(2)}</span></div>
                     <div className="flex justify-between text-ink/60">
                       <span>Shipping</span>
                       <span>{Number(order.shippingFee) === 0 ? <span className="text-green-600">Free</span> : `₹${Number(order.shippingFee)}`}</span>
@@ -750,7 +750,7 @@ function OrdersSection() {
                       <div className="flex justify-between text-ink/60"><span>COD Charge</span><span>₹{Number(order.codFee)}</span></div>
                     )}
                     <div className="flex justify-between font-semibold text-ink border-t border-ink/5 pt-1 mt-1">
-                      <span>Total</span><span>₹{Number(order.total).toFixed(0)}</span>
+                      <span>Total</span><span>₹{Number(order.total).toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between text-xs text-ink/40 pt-0.5">
                       <span>Payment</span>
@@ -807,7 +807,7 @@ function OrdersSection() {
                                   <input type="checkbox" className="h-4 w-4 accent-red-500" checked={picked.has(l.id)}
                                     onChange={(e) => setPicked((prev) => { const n = new Set(prev); if (e.target.checked) n.add(l.id); else n.delete(l.id); return n; })} />
                                   <span className="flex-1 truncate">{l.title} <span className="text-ink/40">· {l.variantTitle} × {l.quantity}</span></span>
-                                  <span className="text-ink/60">₹{Number(l.lineTotal ?? Number(l.price) * l.quantity).toFixed(0)}</span>
+                                  <span className="text-ink/60">₹{Number(l.lineTotal ?? Number(l.price) * l.quantity).toFixed(2)}</span>
                                 </label>
                               ))}
                               {cancellable.length > 1 && (
