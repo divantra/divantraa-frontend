@@ -7,8 +7,9 @@ import { useRouter } from "next/navigation";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import {
   MapPin, Plus, Check, ChevronRight, Truck, Banknote,
-  AlertCircle, ArrowLeft, Loader2, ShieldCheck,
+  AlertCircle, ArrowLeft, Loader2, ShieldCheck, LocateFixed,
 } from "lucide-react";
+import { detectCurrentAddress } from "@/lib/geolocation";
 import { useCartStore } from "@/store/useCartStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { api } from "@/lib/api";
@@ -92,6 +93,8 @@ export default function CheckoutPage() {
   const [showNewForm,     setShowNewForm]   = useState(false);
   const [form,            setForm]          = useState<AddressForm>(emptyForm);
   const [formError,       setFormError]     = useState<string | null>(null);
+  const [locating,        setLocating]      = useState(false);
+  const [locateNotice,    setLocateNotice]  = useState<string | null>(null);
   const [orderError,      setOrderError]    = useState<string | null>(null);
   const [submitting,      setSubmitting]    = useState(false);
   const [submitted,       setSubmitted]     = useState(false); // prevent double-submit
@@ -208,6 +211,42 @@ export default function CheckoutPage() {
     if (err) { setFormError(err); return; }
     setFormError(null);
     saveAddress.mutate(form);
+  }
+
+  /** Detects the browser's current position and fills the (already-open) address form from it. Never auto-saves. */
+  async function handleUseLocation() {
+    if (locating) return;
+    setLocating(true);
+    setFormError(null);
+    setLocateNotice(null);
+    try {
+      const addr = await detectCurrentAddress();
+      const matchedState = INDIAN_STATES.find((s) => s.toLowerCase() === addr.state.trim().toLowerCase()) ?? "";
+      setForm((f) => ({
+        ...f,
+        line1: addr.line1 || f.line1,
+        line2: addr.line2 || f.line2,
+        city: addr.city || f.city,
+        state: matchedState || f.state,
+        pincode: addr.pincode || f.pincode,
+      }));
+      setLocateNotice("Filled from your current location — please check it's correct before saving.");
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : "Couldn't detect your location. Please enter your address manually.");
+    } finally {
+      setLocating(false);
+    }
+  }
+
+  /** Opens the blank new-address form, prefilled with the account's name/phone. Shared by "Add new" and "Use my location". */
+  function openNewAddressForm() {
+    const mobile = user?.mobile ?? "";
+    const phone  = mobile.startsWith("+91") ? mobile.slice(3) : mobile;
+    setForm({ ...emptyForm, fullName: user?.name ?? "", phone });
+    setFormError(null);
+    setLocateNotice(null);
+    setShowNewForm(true);
+    setSelectedAddr(null);
   }
 
   /** Push the local cart to the server cart so the backend prices exactly what the customer sees. */
@@ -472,24 +511,42 @@ export default function CheckoutPage() {
 
               {/* Add new address toggle */}
               {!showNewForm && (
-                <button
-                  onClick={() => {
-                    const mobile = user?.mobile ?? "";
-                    const phone  = mobile.startsWith("+91") ? mobile.slice(3) : mobile;
-                    setForm({ ...emptyForm, fullName: user?.name ?? "", phone });
-                    setShowNewForm(true);
-                    setSelectedAddr(null);
-                  }}
-                  className="flex items-center gap-2 text-sm text-leaf font-medium hover:underline"
-                >
-                  <Plus size={14} /> Add new address
-                </button>
+                <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+                  <button
+                    onClick={openNewAddressForm}
+                    className="flex items-center gap-2 text-sm text-leaf font-medium hover:underline"
+                  >
+                    <Plus size={14} /> Add new address
+                  </button>
+                  <button
+                    onClick={() => { openNewAddressForm(); handleUseLocation(); }}
+                    className="flex items-center gap-2 text-sm text-leaf font-medium hover:underline"
+                  >
+                    <LocateFixed size={14} /> Use my current location
+                  </button>
+                </div>
               )}
 
               {/* New address form */}
               {showNewForm && (
                 <div className="border border-ink/10 rounded-xl p-5 mt-4">
-                  <h3 className="font-medium text-sm text-ink mb-4">New Address</h3>
+                  <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+                    <h3 className="font-medium text-sm text-ink">New Address</h3>
+                    <button
+                      onClick={handleUseLocation}
+                      disabled={locating}
+                      className="flex items-center gap-1.5 text-xs text-leaf font-medium hover:underline disabled:opacity-50"
+                    >
+                      {locating ? <Loader2 size={13} className="animate-spin" /> : <LocateFixed size={13} />}
+                      {locating ? "Detecting your location…" : "Use my current location"}
+                    </button>
+                  </div>
+
+                  {locateNotice && !formError && (
+                    <div className="mb-3 flex gap-2 text-sm text-leaf bg-leaf/10 rounded-lg p-3">
+                      <MapPin size={15} className="shrink-0 mt-0.5" /> {locateNotice}
+                    </div>
+                  )}
 
                   {formError && (
                     <div className="mb-3 flex gap-2 text-sm text-red-600 bg-red-50 rounded-lg p-3">
