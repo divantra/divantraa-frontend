@@ -1194,10 +1194,10 @@ function AddToCartButton({
     setLoading(true);
 
     setTimeout(() => {
-      addItem(item, 1);
+      setLoading(false);
+      if (!addItem(item, 1)) return; // not signed in — the store already opened the login modal
       useUiStore.getState().openAddOns(item.productId);
 
-      setLoading(false);
       setAdded(true);
 
       setTimeout(() => {

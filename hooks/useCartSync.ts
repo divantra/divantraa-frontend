@@ -30,6 +30,9 @@ export function useCartSync() {
     if (!isHydrated) return;
     if (!user) {
       lastUserId.current = null;
+      // No guest cart is allowed anymore — wipe anything left over from localStorage
+      // (e.g. from before this policy existed, or a stale session on a shared device).
+      if (localItems.length > 0) clearLocal();
       return;
     }
     // Already synced for this session

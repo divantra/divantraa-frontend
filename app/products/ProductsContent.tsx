@@ -427,9 +427,9 @@ function AddToCartButton({ item }: { item: Omit<CartLine, "quantity"> }) {
     e.stopPropagation();
     setLoading(true);
     setTimeout(() => {
-      addItem(item, 1);
-      useUiStore.getState().openAddOns(item.productId);
       setLoading(false);
+      if (!addItem(item, 1)) return; // not signed in — the store already opened the login modal
+      useUiStore.getState().openAddOns(item.productId);
       setAdded(true);
       setTimeout(() => setAdded(false), 1500);
     }, 350);

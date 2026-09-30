@@ -77,7 +77,7 @@ export default function ProductDetailsPage() {
   const handleAddToCart = () => {
     if (!product || !activeVariant) return;
     startTransition(() => {
-      addItem(
+      const ok = addItem(
         {
           productId:    product.id,
           variantId:    activeVariant.id,
@@ -89,6 +89,7 @@ export default function ProductDetailsPage() {
         },
         1
       );
+      if (!ok) return; // not signed in — addItem already opened the login modal
       syncAddToServer(activeVariant.id, 1);
       useUiStore.getState().openAddOns(product.id);
       setAdded(true);
@@ -99,7 +100,7 @@ export default function ProductDetailsPage() {
   const handleBuyNow = () => {
     if (!product || !activeVariant) return;
     startTransition(() => {
-      addItem({
+      const ok = addItem({
         productId:    product.id,
         variantId:    activeVariant.id,
         title:        product.title,
@@ -108,6 +109,7 @@ export default function ProductDetailsPage() {
         price:        Number(activeVariant.price),
         image:        displayImages[0] ?? "",
       });
+      if (!ok) return; // not signed in — addItem already opened the login modal
       syncAddToServer(activeVariant.id, 1);
       openCart();
     });
@@ -211,6 +213,9 @@ export default function ProductDetailsPage() {
                 {getUnitPriceLabel(activeVariant) && (
                   <p className="text-sm text-ink/50 mt-1">{getUnitPriceLabel(activeVariant)}</p>
                 )}
+                <p className="text-xs font-medium text-ink/70 mt-2">
+                  Size: <span className="text-ink">{activeVariant.title}</span>
+                </p>
                 <p className="text-xs text-ink/40 mt-1">Inclusive of all taxes</p>
               </>
             ) : (

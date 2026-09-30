@@ -17,9 +17,23 @@ import { useLogout } from "@/hooks/useAuth";
 import { api } from "@/lib/api";
 import type { Product } from "@/types/product";
 import { useDebounce } from "@/hooks/useDebounce";
-import { getImageUrl } from "@/lib/image.utils";
 
-const LOGO = getImageUrl("public/Divanatraa-Logo.png");
+const LOGO_MARK = "/logo-mark.png";           // 242×240 — the sun/leaf mark
+const LOGO_WORDMARK = "/logo-wordmark-header.png"; // 560×96 — "DIVANTRAA" only (no tagline, for the compact header)
+
+/** Mark + wordmark side by side. `size="sm"` for the mobile bars, `size="md"` for desktop. */
+function LogoLockup({ size = "md" }: { size?: "md" | "sm" }) {
+  const markH = size === "md" ? 52 : 44;
+  const markW = Math.round(markH * (242 / 240));
+  const wordH = size === "md" ? 34 : 29;
+  const wordW = Math.round(wordH * (560 / 96));
+  return (
+    <span className="flex items-center gap-2">
+      <Image src={LOGO_MARK} alt="" width={markW} height={markH} priority />
+      <Image src={LOGO_WORDMARK} alt="Divantraa" width={wordW} height={wordH} priority />
+    </span>
+  );
+}
 
 const NAV_LINKS = [
   { href: "/products",                            label: "All Products",      icon: <LayoutGrid size={16} /> },
@@ -169,7 +183,7 @@ export function SiteHeader() {
 
               {/* Logo */}
               <Link href="/" className="shrink-0">
-                <img className="h-[52px] w-auto" src={LOGO} alt="Divantraa" />
+                <LogoLockup size="md" />
               </Link>
 
               {/* Search */}
@@ -355,7 +369,7 @@ export function SiteHeader() {
             </button>
 
             <Link href="/" onClick={closeMobileMenu} className="shrink-0">
-              <img className="h-12 w-auto" src={LOGO} alt="Divantraa" />
+              <LogoLockup size="sm" />
             </Link>
 
             <div className="flex-1" />
@@ -474,7 +488,7 @@ export function SiteHeader() {
               {/* Drawer header */}
               <div className="flex items-center justify-between px-5 py-3 border-b border-ink/8 shrink-0">
                 <Link href="/" onClick={handleMobileClose} className="shrink-0">
-                  <img className="h-12 w-auto" src={LOGO} alt="Divantraa" />
+                  <LogoLockup size="sm" />
                 </Link>
                 <button onClick={handleMobileClose} aria-label="Close menu"
                   className="p-2 rounded-lg hover:bg-ink/5 transition-colors text-ink/60">
