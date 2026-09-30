@@ -21,12 +21,10 @@ import {
   ShoppingCart,
   Minus,
   Plus,
-  Circle,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
 
-import { useUiStore } from "@/store/useUiStore";
 import { api } from "@/lib/api";
 import {
   useCartStore,
@@ -41,6 +39,7 @@ import type {
 import {
   getDefaultVariant,
 } from "@/types/product";
+import VariantPickerModal from "@/components/product/VariantPickerModal";
 
 /* ============================================================
    CATEGORY ICONS
@@ -102,6 +101,9 @@ const MAX_CATEGORY_TABS = 5;
 export function CategoryProductSlider() {
   const [activeSlug, setActiveSlug] =
     useState<string | null>(null);
+
+  const [picker, setPicker] =
+    useState<Product | null>(null);
 
   const sliderRef =
     useRef<HTMLDivElement>(null);
@@ -831,6 +833,7 @@ export function CategoryProductSlider() {
                           image:
                             cardImage,
                         }}
+                        onOpenPicker={() => setPicker(product)}
                       />
                     </div>
 
@@ -1059,6 +1062,8 @@ export function CategoryProductSlider() {
 
       </div>
 
+      {picker && <VariantPickerModal product={picker} onClose={() => setPicker(null)} />}
+
     </section>
   );
 }
@@ -1142,26 +1147,17 @@ function CategoryTab({
 
 function AddToCartButton({
   item,
+  onOpenPicker,
 }: {
   item: Omit<CartLine, "quantity">;
+  onOpenPicker: () => void;
 }) {
   const [
     isClient,
     setIsClient,
   ] = useState(false);
 
-  const [
-    loading,
-    setLoading,
-  ] = useState(false);
-
-  const [
-    added,
-    setAdded,
-  ] = useState(false);
-
   const {
-    addItem,
     updateQuantity,
     getItemQuantity,
   } = useCartStore();
@@ -1190,20 +1186,7 @@ function AddToCartButton({
   ) => {
     e.preventDefault();
     e.stopPropagation();
-
-    setLoading(true);
-
-    setTimeout(() => {
-      setLoading(false);
-      if (!addItem(item, 1)) return; // not signed in — the store already opened the login modal
-      useUiStore.getState().openAddOns(item.productId);
-
-      setAdded(true);
-
-      setTimeout(() => {
-        setAdded(false);
-      }, 1500);
-    }, 350);
+    onOpenPicker(); // shows every size for this product, matching the reference variant-picker UX
   };
 
   /* ============================================================
@@ -1301,7 +1284,6 @@ function AddToCartButton({
   return (
     <button
       onClick={handleAdd}
-      disabled={loading}
       className="
         flex
         h-[40px]
@@ -1321,37 +1303,16 @@ function AddToCartButton({
         hover:bg-leaf
         hover:shadow-lg
         active:scale-95
-        disabled:cursor-not-allowed
-        disabled:opacity-60
       "
     >
+      <span>
+        ADD
+      </span>
 
-      {loading ? (
-        <Circle
-          className="
-            h-4
-            w-4
-            animate-spin
-            text-white
-          "
-        />
-      ) : added ? (
-        <span>
-          ✓ Added
-        </span>
-      ) : (
-        <>
-          <span>
-            ADD
-          </span>
-
-          <ShoppingCart
-            size={17}
-            strokeWidth={2}
-          />
-        </>
-      )}
-
+      <ShoppingCart
+        size={17}
+        strokeWidth={2}
+      />
     </button>
   );
 }

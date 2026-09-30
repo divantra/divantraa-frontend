@@ -5,17 +5,18 @@ import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import Image from "next/image";
-import { Circle, Minus, Plus, ShoppingCart, Star } from "lucide-react";
+import { Minus, Plus, ShoppingCart, Star } from "lucide-react";
 import { api } from "@/lib/api";
-import { useUiStore } from "@/store/useUiStore";
 import { useCartStore, type CartLine } from "@/store/useCartStore";
 import type { Product } from "@/types/product";
 import { getDefaultVariant } from "@/types/product";
+import VariantPickerModal from "@/components/product/VariantPickerModal";
 
 export default function ProductsContent() {
   const searchParams = useSearchParams();
   const category = searchParams.get("category") ?? undefined;
   const [sort, setSort] = useState("newest");
+  const [picker, setPicker] = useState<Product | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["products", category, sort],
@@ -210,6 +211,7 @@ export default function ProductsContent() {
         price: Number(variant.price),
         image: cardImage,
       }}
+      onOpenPicker={() => setPicker(product)}
     />
   </div>
 
@@ -406,17 +408,17 @@ export default function ProductsContent() {
           );
         })}
       </div>
+
+      {picker && <VariantPickerModal product={picker} onClose={() => setPicker(null)} />}
     </main>
   );
 }
 
 /* ── ADD TO CART — identical logic & style to CategoryProductSlider ── */
 
-function AddToCartButton({ item }: { item: Omit<CartLine, "quantity"> }) {
+function AddToCartButton({ item, onOpenPicker }: { item: Omit<CartLine, "quantity">; onOpenPicker: () => void }) {
   const [isClient, setIsClient] = useState(false);
-  const [loading, setLoading]   = useState(false);
-  const [added, setAdded]       = useState(false);
-  const { addItem, updateQuantity, getItemQuantity } = useCartStore();
+  const { updateQuantity, getItemQuantity } = useCartStore();
 
   useEffect(() => { setIsClient(true); }, []);
 
@@ -425,14 +427,7 @@ function AddToCartButton({ item }: { item: Omit<CartLine, "quantity"> }) {
   const handleAdd = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      if (!addItem(item, 1)) return; // not signed in — the store already opened the login modal
-      useUiStore.getState().openAddOns(item.productId);
-      setAdded(true);
-      setTimeout(() => setAdded(false), 1500);
-    }, 350);
+    onOpenPicker(); // shows every size for this product, matching the reference variant-picker UX
   };
 
   if (cartQuantity > 0) {
@@ -471,7 +466,6 @@ function AddToCartButton({ item }: { item: Omit<CartLine, "quantity"> }) {
   return (
     <button
       onClick={handleAdd}
-      disabled={loading}
       className="
         flex h-[40px] min-w-[88px] items-center justify-center gap-1.5
         rounded-[20px] bg-forest px-3.5
@@ -479,19 +473,10 @@ function AddToCartButton({ item }: { item: Omit<CartLine, "quantity"> }) {
         transition-all duration-200
         hover:bg-leaf hover:shadow-lg
         active:scale-95
-        disabled:cursor-not-allowed disabled:opacity-60
       "
     >
-      {loading ? (
-        <Circle className="h-4 w-4 animate-spin text-white" />
-      ) : added ? (
-        <span>✓ Added</span>
-      ) : (
-        <>
-          <span>ADD</span>
-          <ShoppingCart size={17} strokeWidth={2} />
-        </>
-      )}
+      <span>ADD</span>
+      <ShoppingCart size={17} strokeWidth={2} />
     </button>
   );
 }
