@@ -15,12 +15,17 @@ export interface Category {
 
 // ── ProductVariant — the purchasable SKU ───────────────────────
 
+/** Mirrors the backend `PackagingType` enum — drives the canonical SKU suffix. */
+export type PackagingType = "GLASS" | "TIN" | "PLASTIC" | "SPRAY" | "CAN" | "POUCH" | "BOX" | "OTHER";
+
 export interface ProductVariant {
   id:             string;
   productId:      string;
   title:          string;                     // e.g. "500ml — Glass Bottle"
   options:        Record<string, string>;      // e.g. { Size: "500ml", Container: "Glass" }
   sku:            string;
+  skuNumber?:     string | null;               // system-assigned, immutable 4-digit lookup id
+  packaging?:     PackagingType | null;
   price:          number;                     // Decimal serialized as number
   compareAtPrice: number | null;              // strikethrough price
   stock:          number;
