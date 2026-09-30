@@ -22,7 +22,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   User, Package, MapPin, HelpCircle, LogOut, AlertTriangle,
   Pencil, Check, X, ChevronDown, ChevronUp, ShieldCheck,
-  Plus, Trash2, Star, Banknote, Truck,
+  Plus, Trash2, Star, Banknote, Truck, Coins,
 } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useLogout, useUpdateProfile, useDeactivateAccount } from "@/hooks/useAuth";
@@ -184,6 +184,13 @@ function AccountPageInner() {
     (searchParams.get("tab") as Tab | null) ?? "profile"
   );
 
+  const { data: coins } = useQuery<{ balance: number }>({
+    queryKey: ["my-coins"],
+    queryFn:  () => api.get("/user/coins").then((r) => r.data.data),
+    enabled:  !!user,
+    staleTime: 15_000,
+  });
+
   // Redirect unauthenticated visitors
   useEffect(() => {
     if (isHydrated && !user) router.replace("/");
@@ -229,14 +236,21 @@ function AccountPageInner() {
           </h1>
           <p className="text-white/60 text-xs mt-0.5">+91 {mobileDisplay}</p>
         </div>
-        {user.role === "ADMIN" && (
-          <Link
-            href="/admin"
-            className="flex items-center gap-2 bg-white/15 hover:bg-white/25 text-white text-xs font-medium px-3 py-2 rounded-lg transition-colors"
-          >
-            <ShieldCheck size={14} /> Admin Panel
-          </Link>
-        )}
+        <div className="flex items-center gap-3">
+          {coins && (
+            <div className="flex items-center gap-1.5 bg-white/15 text-white text-xs font-medium px-3 py-2 rounded-lg">
+              <Coins size={14} /> {coins.balance} Divantraa Coins
+            </div>
+          )}
+          {user.role === "ADMIN" && (
+            <Link
+              href="/admin"
+              className="flex items-center gap-2 bg-white/15 hover:bg-white/25 text-white text-xs font-medium px-3 py-2 rounded-lg transition-colors"
+            >
+              <ShieldCheck size={14} /> Admin Panel
+            </Link>
+          )}
+        </div>
       </div>
 
       <div className="flex gap-6 items-start">
