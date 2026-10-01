@@ -169,8 +169,7 @@ export function SiteHeader() {
 
   return (
     <>
-      {/* z-50 ensures header is always above product card buttons (z-10) */}
-      <header className="sticky top-0 z-50 bg-white shadow-sm">
+      <header className="bg-white shadow-sm">
 
         {/* ════════════════════════════════════════════════════════════
             DESKTOP HEADER
