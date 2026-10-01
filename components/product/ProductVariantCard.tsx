@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { ShoppingCart, Star, Flame } from "lucide-react";
+import { Star, Flame } from "lucide-react";
 import { getVariantImages, getUnitPriceLabel, getDiscountPercent } from "@/types/product";
 import { bestPrice, type PromoConfig } from "@/hooks/usePromoConfig";
 import type { Product, ProductVariant } from "@/types/product";
@@ -85,9 +85,9 @@ export default function ProductVariantCard({
             <button
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); onOpenPicker(); }}
               aria-label={`Choose a size of ${product.title}`}
-              className="flex h-8 w-full items-center justify-center gap-1.5 rounded-full bg-forest text-white shadow-sm transition-colors hover:bg-leaf"
+              className="flex h-8 w-full items-center justify-center rounded-full bg-forest text-xs font-semibold text-white shadow-sm transition-colors hover:bg-leaf"
             >
-              <ShoppingCart size={15} />
+              ADD
             </button>
           )}
         </div>
