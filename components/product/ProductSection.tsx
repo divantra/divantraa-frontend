@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ShoppingCart, Star } from "lucide-react";
 import ProductVariantCard from "./ProductVariantCard";
 import VariantPickerModal from "./VariantPickerModal";
+import { usePromoConfig } from "@/hooks/usePromoConfig";
 import type { Product } from "@/types/product";
 
 /** A small rotating accent palette so adjacent product sections read as visually distinct, Anveshan-style. */
@@ -19,6 +20,7 @@ const ACCENTS = [
 /** One product, shown as a header + all of its active variants scrolling horizontally. */
 export default function ProductSection({ product, accentIndex }: { product: Product; accentIndex: number }) {
   const [pickerOpen, setPickerOpen] = useState(false);
+  const { data: promo } = usePromoConfig();
   const variants = [...product.variants].filter((v) => v.isActive).sort((a, b) => a.sortOrder - b.sortOrder);
   if (variants.length === 0) return null;
   const accent = ACCENTS[accentIndex % ACCENTS.length];
@@ -55,7 +57,7 @@ export default function ProductSection({ product, accentIndex }: { product: Prod
 
       <div className="flex gap-3 overflow-x-auto pb-1 snap-x snap-mandatory" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
         {variants.map((v) => (
-          <ProductVariantCard key={v.id} product={product} variant={v} onOpenPicker={() => setPickerOpen(true)} />
+          <ProductVariantCard key={v.id} product={product} variant={v} promo={promo} onOpenPicker={() => setPickerOpen(true)} />
         ))}
       </div>
 

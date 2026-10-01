@@ -40,6 +40,7 @@ import {
   getDefaultVariant,
 } from "@/types/product";
 import VariantPickerModal from "@/components/product/VariantPickerModal";
+import { usePromoConfig, bestPrice } from "@/hooks/usePromoConfig";
 
 /* ============================================================
    CATEGORY ICONS
@@ -104,6 +105,8 @@ export function CategoryProductSlider() {
 
   const [picker, setPicker] =
     useState<Product | null>(null);
+
+  const { data: promo } = usePromoConfig();
 
   const sliderRef =
     useRef<HTMLDivElement>(null);
@@ -985,6 +988,7 @@ export function CategoryProductSlider() {
 
                         {/* OFFER */}
 
+                        {bestPrice(Number(variant.price), promo) !== null && (
                         <div
                           className="
                             mt-3
@@ -1027,12 +1031,7 @@ export function CategoryProductSlider() {
                             "
                           >
                             ₹
-                            {Math.round(
-                              Number(
-                                variant.price
-                              ) *
-                                0.85
-                            )}
+                            {bestPrice(Number(variant.price), promo)}
                           </span>
 
                           <span
@@ -1043,10 +1042,11 @@ export function CategoryProductSlider() {
                               sm:inline
                             "
                           >
-                            with PURE15
+                            with {promo!.promoCode}
                           </span>
 
                         </div>
+                        )}
 
                       </Link>
 

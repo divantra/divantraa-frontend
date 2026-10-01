@@ -4,14 +4,13 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import { X, ShoppingCart, Minus, Plus, Circle } from "lucide-react";
 import { useCartStore } from "@/store/useCartStore";
+import { usePromoConfig, bestPrice } from "@/hooks/usePromoConfig";
 import { getVariantImages, getUnitPriceLabel } from "@/types/product";
 import type { Product, ProductVariant } from "@/types/product";
 
-/** Same convention the listing cards already use for the "Best Price" preview — a client-side estimate; checkout applies the real, server-configured code. */
-const PROMO_CODE = "PURE15";
-const PROMO_PERCENT = 0.15;
-
 export default function VariantPickerModal({ product, onClose }: { product: Product; onClose: () => void }) {
+  const { data: promo } = usePromoConfig();
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     document.addEventListener("keydown", onKey);
@@ -39,7 +38,7 @@ export default function VariantPickerModal({ product, onClose }: { product: Prod
         {/* Variant rows */}
         <div className="flex-1 overflow-y-auto divide-y divide-ink/5">
           {variants.map((v) => (
-            <VariantRow key={v.id} product={product} variant={v} />
+            <VariantRow key={v.id} product={product} variant={v} promo={promo} />
           ))}
         </div>
       </div>
@@ -47,7 +46,7 @@ export default function VariantPickerModal({ product, onClose }: { product: Prod
   );
 }
 
-function VariantRow({ product, variant }: { product: Product; variant: ProductVariant }) {
+function VariantRow({ product, variant, promo }: { product: Product; variant: ProductVariant; promo: ReturnType<typeof usePromoConfig>["data"] }) {
   const [isClient, setIsClient] = useState(false);
   const [loading, setLoading]   = useState(false);
   const { addItem, updateQuantity, getItemQuantity } = useCartStore();
@@ -56,7 +55,7 @@ function VariantRow({ product, variant }: { product: Product; variant: ProductVa
   const cartQuantity = isClient ? getItemQuantity(variant.id) : 0;
   const image = getVariantImages(variant, product)[0] ?? "";
   const unitLabel = getUnitPriceLabel(variant);
-  const bestPrice = Math.round(Number(variant.price) * (1 - PROMO_PERCENT));
+  const best = bestPrice(Number(variant.price), promo);
 
   const handleAdd = () => {
     setLoading(true);
@@ -85,11 +84,13 @@ function VariantRow({ product, variant }: { product: Product; variant: ProductVa
           )}
           {unitLabel && <span className="text-[11px] text-ink/40">{unitLabel}</span>}
         </div>
-        <div className="mt-1 flex items-center gap-1 text-[11px]">
-          <span>🏷️</span>
-          <span className="font-semibold text-forest">Best Price ₹{bestPrice}</span>
-          <span className="text-forest/70">with {PROMO_CODE}</span>
-        </div>
+        {best !== null && (
+          <div className="mt-1 flex items-center gap-1 text-[11px]">
+            <span>🏷️</span>
+            <span className="font-semibold text-forest">Best Price ₹{best}</span>
+            <span className="text-forest/70">with {promo!.promoCode}</span>
+          </div>
+        )}
       </div>
 
       {cartQuantity > 0 ? (

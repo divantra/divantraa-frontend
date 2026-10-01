@@ -5,10 +5,11 @@ import { useQuery } from "@tanstack/react-query";
 import Image from "next/image";
 import Link from "next/link";
 import { useState, useTransition } from "react";
-import { Star, FileCheck, ShoppingBag, Minus, Plus, Package, ChevronDown } from "lucide-react";
+import { Star, FileCheck, ShoppingBag, Minus, Plus, Package, ChevronDown, Coins } from "lucide-react";
 import { api } from "@/lib/api";
 import { useCartStore } from "@/store/useCartStore";
 import { useAuthStore } from "@/store/useAuthStore";
+import { usePromoConfig, bestPrice, coinsEarned } from "@/hooks/usePromoConfig";
 import type { Product } from "@/types/product";
 import {
   getDefaultVariant,
@@ -17,10 +18,6 @@ import {
   getUnitPriceLabel,
 } from "@/types/product";
 
-/** Same convention as VariantPickerModal — the standing promo code shown throughout the app. */
-const PROMO_CODE = "PURE15";
-const PROMO_PERCENT = 0.15;
-
 export default function ProductDetailsPage() {
   const { slug } = useParams<{ slug: string }>();
   const [activeImage, setActiveImage] = useState(0);
@@ -28,6 +25,7 @@ export default function ProductDetailsPage() {
   const user = useAuthStore((s) => s.user);
   const [isPending, startTransition] = useTransition();
   const [added, setAdded] = useState(false);
+  const { data: promo } = usePromoConfig();
 
   // Variant selector — the id chosen in the "Select Variant" dropdown
   const [selectedVariantId, setSelectedVariantId] = useState<string | undefined>();
@@ -225,14 +223,25 @@ export default function ProductDetailsPage() {
           {/* Short description */}
           <p className="text-ink/60 leading-relaxed mb-5">{product.shortDescription}</p>
 
-          {/* Best price with the standing promo code — for the currently selected variant */}
+          {/* Earn Divantraa Coins + best price with the standing promo code — for the selected variant, live-refreshing as it changes */}
           {activeVariant && (
-            <div className="mb-5 flex items-center gap-2 rounded-xl bg-blue-50 px-4 py-3">
-              <span className="text-base">🏷️</span>
-              <span className="text-sm font-semibold text-blue-700">
-                Best Price ₹{Math.round(Number(activeVariant.price) * (1 - PROMO_PERCENT)).toLocaleString("en-IN")}
-              </span>
-              <span className="text-sm text-blue-600">with {PROMO_CODE}</span>
+            <div className="mb-5 space-y-2.5">
+              {!!promo?.coinEarnRate && (
+                <div className="flex items-center gap-2.5 rounded-xl bg-amber-50 px-4 py-3">
+                  <Coins size={18} className="text-amber-600 shrink-0" />
+                  <p className="text-sm text-amber-900">
+                    Buy now &amp; earn <span className="font-bold">{coinsEarned(Number(activeVariant.price), promo)} Divantraa Coins</span> instantly
+                  </p>
+                </div>
+              )}
+              {bestPrice(Number(activeVariant.price), promo) !== null && (
+                <div className="flex items-center justify-between rounded-xl bg-forest px-4 py-3.5">
+                  <p className="text-sm text-white">
+                    Best Price <span className="text-lg font-bold">₹{bestPrice(Number(activeVariant.price), promo)!.toLocaleString("en-IN")}</span>
+                  </p>
+                  <span className="rounded-full bg-white/15 px-2.5 py-1 text-xs font-semibold text-white">with {promo!.promoCode}</span>
+                </div>
+              )}
             </div>
           )}
 

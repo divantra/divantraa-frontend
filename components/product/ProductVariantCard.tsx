@@ -4,11 +4,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { ShoppingCart } from "lucide-react";
 import { getVariantImages, getUnitPriceLabel, getDiscountPercent } from "@/types/product";
+import { bestPrice, type PromoConfig } from "@/hooks/usePromoConfig";
 import type { Product, ProductVariant } from "@/types/product";
-
-/** Same convention used across the app's "Best Price" displays. */
-const PROMO_CODE = "PURE15";
-const PROMO_PERCENT = 0.15;
 
 /**
  * One variant shown as its own card — pure display (image, price, best price). It never adds to
@@ -16,14 +13,14 @@ const PROMO_PERCENT = 0.15;
  * for the parent product, where the actual add/quantity controls live.
  */
 export default function ProductVariantCard({
-  product, variant, onOpenPicker,
+  product, variant, promo, onOpenPicker,
 }: {
-  product: Product; variant: ProductVariant; onOpenPicker: () => void;
+  product: Product; variant: ProductVariant; promo: PromoConfig | undefined; onOpenPicker: () => void;
 }) {
   const image = getVariantImages(variant, product)[0] ?? "";
   const unitLabel = getUnitPriceLabel(variant);
   const off = getDiscountPercent(variant);
-  const bestPrice = Math.round(Number(variant.price) * (1 - PROMO_PERCENT));
+  const best = bestPrice(Number(variant.price), promo);
   const soldOut = variant.trackInventory && variant.stock === 0;
 
   return (
@@ -49,10 +46,12 @@ export default function ProductVariantCard({
         </div>
         {unitLabel && <p className="text-[10px] text-ink/40 mt-0.5">{unitLabel}</p>}
 
-        <div className="mt-1.5 flex items-center gap-1 rounded-lg bg-leaf/10 px-1.5 py-1">
-          <span className="text-[10px]">🏷️</span>
-          <span className="text-[10px] font-semibold text-forest truncate">Best ₹{bestPrice} w/ {PROMO_CODE}</span>
-        </div>
+        {best !== null && (
+          <div className="mt-1.5 flex items-center gap-1 rounded-lg bg-leaf/10 px-1.5 py-1">
+            <span className="text-[10px]">🏷️</span>
+            <span className="text-[10px] font-semibold text-forest truncate">Best ₹{best} w/ {promo!.promoCode}</span>
+          </div>
+        )}
 
         <div className="mt-2">
           {soldOut ? (
