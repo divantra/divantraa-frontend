@@ -6,7 +6,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import {
-  MapPin, Plus, Check, ChevronRight, Truck, Banknote,
+  MapPin, Plus, Minus, Trash2, Check, ChevronRight, Truck, Banknote,
   AlertCircle, ArrowLeft, Loader2, ShieldCheck, LocateFixed,
 } from "lucide-react";
 import { detectCurrentAddress } from "@/lib/geolocation";
@@ -86,7 +86,7 @@ export default function CheckoutPage() {
   const router   = useRouter();
   const user     = useAuthStore((s) => s.user);
   const isHydrated = useAuthStore((s) => s.isHydrated);
-  const { items, subtotal, clearCart } = useCartStore();
+  const { items, subtotal, clearCart, updateQuantity, removeItem } = useCartStore();
 
   const [step,            setStep]          = useState<Step>("address");
   const [selectedAddr,    setSelectedAddr]  = useState<string | null>(null);
@@ -768,9 +768,37 @@ export default function CheckoutPage() {
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-medium text-ink line-clamp-2">{item.title}</p>
                     <p className="text-xs text-ink/40">{item.variantTitle}</p>
-                    <div className="flex justify-between items-center mt-1">
-                      <span className="text-xs text-ink/50">Qty {item.quantity}</span>
-                      <span className="text-xs font-medium text-ink">₹{(item.price * item.quantity).toFixed(0)}</span>
+                    <div className="flex justify-between items-center mt-1.5">
+                      <div className="flex items-center rounded-full border border-ink/15">
+                        <button
+                          type="button"
+                          onClick={() => updateQuantity(item.variantId, item.quantity - 1)}
+                          aria-label={item.quantity <= 1 ? "Remove" : "Decrease quantity"}
+                          className="p-1 text-ink/60 hover:text-ink"
+                        >
+                          <Minus size={11} />
+                        </button>
+                        <span className="w-6 text-center text-xs font-medium">{item.quantity}</span>
+                        <button
+                          type="button"
+                          onClick={() => updateQuantity(item.variantId, item.quantity + 1)}
+                          aria-label="Increase quantity"
+                          className="p-1 text-ink/60 hover:text-ink"
+                        >
+                          <Plus size={11} />
+                        </button>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-medium text-ink">₹{(item.price * item.quantity).toFixed(0)}</span>
+                        <button
+                          type="button"
+                          onClick={() => removeItem(item.variantId)}
+                          aria-label={`Remove ${item.title}`}
+                          className="text-ink/25 hover:text-red-500"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>

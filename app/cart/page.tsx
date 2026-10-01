@@ -12,17 +12,9 @@ import { useUiStore } from "@/store/useUiStore";
 import { api } from "@/lib/api";
 import { getImageUrl } from "@/lib/image.utils";
 import { Product, getDefaultVariant } from "@/types/product";
-
-// ── Constants (must match backend env defaults) ───────────────────
-const SHIPPING_FREE_THRESHOLD = 999;
-const SHIPPING_FEE            = 79;
-const COD_FEE                 = 50;
+import { useQuote } from "@/hooks/useQuote";
 
 // ── Helpers ────────────────────────────────────────────────────────
-
-function calcShipping(subtotal: number) {
-  return subtotal >= SHIPPING_FREE_THRESHOLD ? 0 : SHIPPING_FEE;
-}
 
 function discountPct(price: number, mrp: number | null | undefined) {
   if (!mrp || mrp <= price) return null;
@@ -59,9 +51,14 @@ export default function CartPage() {
   const { items, updateQuantity, removeItem, clearCart, subtotal } = useCartStore();
   const [syncing, setSyncing] = useState<string | null>(null);
 
+  const { data: quote } = useQuote(items);
+  const cod = quote?.methods.cod;
+
   const sub      = subtotal();
-  const shipping = calcShipping(sub);
-  const total    = sub + shipping + COD_FEE;
+  const shipping = cod?.shippingFee ?? 0;
+  const codFee   = cod?.codFee ?? 0;
+  const total    = cod ? cod.total : sub;
+  const freeShippingThreshold = quote?.freeShippingThreshold ?? 0;
   const savings  = items.reduce((s, i) => {
     const mrp = i.compareAtPrice;
     if (mrp && mrp > i.price) s += (mrp - i.price) * i.quantity;
@@ -294,13 +291,15 @@ export default function CartPage() {
                     : `₹${shipping}`}
                 </span>
               </div>
-              <div className="flex justify-between text-ink/70">
-                <span>COD Charge</span>
-                <span>₹{COD_FEE}</span>
-              </div>
-              {sub < SHIPPING_FREE_THRESHOLD && (
+              {codFee > 0 && (
+                <div className="flex justify-between text-ink/70">
+                  <span>COD Charge</span>
+                  <span>₹{codFee}</span>
+                </div>
+              )}
+              {freeShippingThreshold > 0 && sub < freeShippingThreshold && (
                 <p className="text-xs text-ink/40 bg-cream rounded-lg px-3 py-2">
-                  Add ₹{(SHIPPING_FREE_THRESHOLD - sub).toFixed(0)} more to get FREE shipping
+                  Add ₹{(freeShippingThreshold - sub).toFixed(0)} more to get FREE shipping
                 </p>
               )}
               <div className="border-t border-ink/8 pt-3 flex justify-between font-semibold text-ink text-base">
