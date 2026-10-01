@@ -18,6 +18,10 @@ import {
   getUnitPriceLabel,
 } from "@/types/product";
 
+/** Same convention as VariantPickerModal — the standing promo code shown throughout the app. */
+const PROMO_CODE = "PURE15";
+const PROMO_PERCENT = 0.15;
+
 export default function ProductDetailsPage() {
   const { slug } = useParams<{ slug: string }>();
   const [activeImage, setActiveImage] = useState(0);
@@ -210,9 +214,6 @@ export default function ProductDetailsPage() {
                     </>
                   )}
                 </div>
-                {getUnitPriceLabel(activeVariant) && (
-                  <p className="text-sm text-ink/50 mt-1">{getUnitPriceLabel(activeVariant)}</p>
-                )}
                 <p className="text-xs font-medium text-ink/70 mt-2">
                   Size: <span className="text-ink">{activeVariant.title}</span>
                 </p>
@@ -225,6 +226,17 @@ export default function ProductDetailsPage() {
 
           {/* Short description */}
           <p className="text-ink/60 leading-relaxed mb-5">{product.shortDescription}</p>
+
+          {/* Best price with the standing promo code — for the currently selected variant */}
+          {activeVariant && (
+            <div className="mb-5 flex items-center gap-2 rounded-xl bg-blue-50 px-4 py-3">
+              <span className="text-base">🏷️</span>
+              <span className="text-sm font-semibold text-blue-700">
+                Best Price ₹{Math.round(Number(activeVariant.price) * (1 - PROMO_PERCENT)).toLocaleString("en-IN")}
+              </span>
+              <span className="text-sm text-blue-600">with {PROMO_CODE}</span>
+            </div>
+          )}
 
           {/* ── Variant selector (cards) ───────────────────── */}
           {product.variants.length > 1 && (

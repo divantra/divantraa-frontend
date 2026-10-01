@@ -138,7 +138,7 @@ export default function CheckoutPage() {
     const total = Math.round((t.subtotal + t.shippingFee + t.codFee - discount) * 100) / 100;
     return { discount, total, promoDiscount: promo };
   }
-  const { discount: finalDiscount, total: finalTotal, promoDiscount } = withCoinsAndPromo(totals);
+  const { total: finalTotal, promoDiscount } = withCoinsAndPromo(totals);
   const codFinalTotal    = withCoinsAndPromo(quote?.methods.cod).total;
   const onlineFinalTotal = withCoinsAndPromo(quote?.methods.online).total;
 
