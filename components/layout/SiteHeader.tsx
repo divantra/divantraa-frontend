@@ -8,7 +8,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   ShoppingCart, CircleUser, Menu, X, Search,
   ShieldCheck, LogOut, Package, User,
-  LayoutGrid, Flame, Info, PhoneCall, ChevronDown,
+  LayoutGrid, Flame, Info, PhoneCall, ChevronDown, Leaf,
 } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useCartStore } from "@/store/useCartStore";
@@ -37,9 +37,16 @@ function LogoLockup({ size = "md" }: { size?: "md" | "sm" }) {
       <span className="flex flex-col leading-none">
         <Image src={LOGO_WORDMARK} alt="Divantraa" width={wordW} height={wordH} priority />
         {size === "md" && (
-          <span className="mt-1 whitespace-nowrap font-display italic text-[11px] text-forest/80">
-            Pure Beginnings. Healthy Living.
-          </span>
+          <>
+            <span className="mt-1 flex items-center gap-1.5">
+              <span className="h-px flex-1 bg-forest/40" />
+              <Leaf size={11} strokeWidth={2} className="shrink-0 text-forest/70" />
+              <span className="h-px flex-1 bg-forest/40" />
+            </span>
+            <span className="mt-1 whitespace-nowrap font-display italic text-[11px] text-forest/80">
+              Pure Beginnings. Healthy Living.
+            </span>
+          </>
         )}
       </span>
     </span>
