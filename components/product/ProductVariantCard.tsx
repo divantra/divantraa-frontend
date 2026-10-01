@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Minus, Plus, ShoppingCart, Circle } from "lucide-react";
 import { useCartStore } from "@/store/useCartStore";
+import { useUiStore } from "@/store/useUiStore";
 import { getVariantImages, getUnitPriceLabel, getDiscountPercent } from "@/types/product";
 import type { Product, ProductVariant } from "@/types/product";
 
@@ -37,6 +38,7 @@ export default function ProductVariantCard({ product, variant }: { product: Prod
         variantTitle: variant.title, slug: product.slug, price: Number(variant.price),
         compareAtPrice: variant.compareAtPrice ?? undefined, image,
       }, 1);
+      useUiStore.getState().openAddOns(product.id);
     }, 250);
   };
 

@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { Star } from "lucide-react";
+import { ShoppingCart, Star } from "lucide-react";
 import ProductVariantCard from "./ProductVariantCard";
+import VariantPickerModal from "./VariantPickerModal";
 import type { Product } from "@/types/product";
 
 /** A small rotating accent palette so adjacent product sections read as visually distinct, Anveshan-style. */
@@ -16,6 +18,7 @@ const ACCENTS = [
 
 /** One product, shown as a header + all of its active variants scrolling horizontally. */
 export default function ProductSection({ product, accentIndex }: { product: Product; accentIndex: number }) {
+  const [pickerOpen, setPickerOpen] = useState(false);
   const variants = [...product.variants].filter((v) => v.isActive).sort((a, b) => a.sortOrder - b.sortOrder);
   if (variants.length === 0) return null;
   const accent = ACCENTS[accentIndex % ACCENTS.length];
@@ -33,9 +36,21 @@ export default function ProductSection({ product, accentIndex }: { product: Prod
             </span>
           </div>
         </Link>
-        <Link href={`/products/${product.slug}`} className={`shrink-0 text-xs font-medium ${accent.text} hover:underline`}>
-          View all →
-        </Link>
+        <div className="flex items-center gap-3 shrink-0">
+          {variants.length > 1 && (
+            <button
+              type="button"
+              onClick={() => setPickerOpen(true)}
+              aria-label={`See all sizes of ${product.title}`}
+              className={`flex items-center justify-center h-8 w-8 rounded-full bg-white/70 ${accent.text} hover:bg-white transition-colors`}
+            >
+              <ShoppingCart size={15} />
+            </button>
+          )}
+          <Link href={`/products/${product.slug}`} className={`text-xs font-medium ${accent.text} hover:underline`}>
+            View all →
+          </Link>
+        </div>
       </div>
 
       <div className="flex gap-3 overflow-x-auto pb-1 snap-x snap-mandatory" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
@@ -43,6 +58,8 @@ export default function ProductSection({ product, accentIndex }: { product: Prod
           <ProductVariantCard key={v.id} product={product} variant={v} />
         ))}
       </div>
+
+      {pickerOpen && <VariantPickerModal product={product} onClose={() => setPickerOpen(false)} />}
     </section>
   );
 }
