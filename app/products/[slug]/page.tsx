@@ -4,7 +4,7 @@ import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import Image from "next/image";
 import Link from "next/link";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { Star, FileCheck, ShoppingBag, Minus, Plus, Package, ChevronDown, Coins } from "lucide-react";
 import { api } from "@/lib/api";
 import { useCartStore } from "@/store/useCartStore";
@@ -65,6 +65,14 @@ export default function ProductDetailsPage() {
     setActiveImage(0);
     setPrevVariantId(activeVariant?.id);
   }
+
+  // Auto-advance the gallery every 10s — pauses itself whenever there's only one image to show.
+  const imageCount = displayImages.length;
+  useEffect(() => {
+    if (imageCount <= 1) return;
+    const timer = setInterval(() => setActiveImage((i) => (i + 1) % imageCount), 10_000);
+    return () => clearInterval(timer);
+  }, [imageCount, activeVariant?.id]);
 
   const cartQuantity = activeVariant ? getItemQuantity(activeVariant.id) : 0;
 
@@ -235,7 +243,7 @@ export default function ProductDetailsPage() {
                 </div>
               )}
               {bestPrice(Number(activeVariant.price), promo) !== null && (
-                <div className="flex items-center justify-between rounded-xl bg-forest px-4 py-3.5">
+                <div className="animate-pulse-glow flex items-center justify-between rounded-xl bg-forest px-4 py-3.5">
                   <p className="text-sm text-white">
                     Best Price <span className="text-lg font-bold">₹{bestPrice(Number(activeVariant.price), promo)!.toLocaleString("en-IN")}</span>
                   </p>
