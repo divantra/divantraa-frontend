@@ -40,21 +40,24 @@ export default function ProductVariantCard({
         <div className="absolute inset-x-0 top-0 flex items-start justify-between p-2">
           {off > 0 ? (
             <span className="rounded-full bg-forest px-2 py-0.5 text-[10px] font-semibold text-white">{off}% OFF</span>
-          ) : product.isFeatured ? (
-            <span className="flex items-center gap-0.5 rounded-full bg-gold px-2 py-0.5 text-[10px] font-semibold text-white">
-              <Star size={9} className="fill-white" /> Best Seller
-            </span>
           ) : <span />}
-          {sellingFast && !soldOut && (
-            <span className="flex items-center gap-0.5 rounded-full bg-clay px-2 py-0.5 text-[10px] font-semibold text-white">
-              <Flame size={9} className="fill-white" /> Selling fast
-            </span>
-          )}
+          <div className="flex flex-col items-end gap-1">
+            {product.isFeatured && (
+              <span className="flex items-center gap-0.5 rounded-full bg-gold px-2 py-0.5 text-[10px] font-semibold text-white">
+                <Star size={9} className="fill-white" /> Best Seller
+              </span>
+            )}
+            {sellingFast && !soldOut && (
+              <span className="flex items-center gap-0.5 rounded-full bg-clay px-2 py-0.5 text-[10px] font-semibold text-white">
+                <Flame size={9} className="fill-white" /> Selling fast
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
       <div className="flex flex-1 flex-col px-3 pb-3 pt-2.5">
-        <p className="text-xs font-medium text-ink/70 truncate">{variant.title}</p>
+        <p className="text-xs font-medium text-ink/70 leading-snug line-clamp-2">{product.title} – {variant.title}</p>
 
         {typeof product.avgRating === "number" && (product.reviewCount ?? 0) > 0 && (
           <span className="mt-0.5 flex items-center gap-1 text-[10px] text-ink/50">
