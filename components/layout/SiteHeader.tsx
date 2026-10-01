@@ -8,7 +8,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   ShoppingCart, CircleUser, Menu, X, Search,
   ShieldCheck, LogOut, Package, User,
-  LayoutGrid, Flame, Info, PhoneCall, ChevronDown, Leaf,
+  LayoutGrid, Info, PhoneCall, ChevronDown,
 } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useCartStore } from "@/store/useCartStore";
@@ -21,11 +21,7 @@ import { useDebounce } from "@/hooks/useDebounce";
 const LOGO_MARK = "/logo-mark.png";           // 242×240 — the sun/leaf mark
 const LOGO_WORDMARK = "/logo-wordmark-header.png"; // 560×96 — "DIVANTRAA" only (no tagline, for the compact header)
 
-/**
- * Mark + wordmark side by side. `size="sm"` for the mobile bars, `size="md"` for desktop.
- * The tagline only shows at `md` — the mobile header bar is too tight to fit it without
- * crowding the search/cart icons next to it.
- */
+/** Mark + wordmark side by side. `size="sm"` for the mobile bars, `size="md"` for desktop. */
 function LogoLockup({ size = "md" }: { size?: "md" | "sm" }) {
   const markH = size === "md" ? 52 : 44;
   const markW = Math.round(markH * (242 / 240));
@@ -34,30 +30,16 @@ function LogoLockup({ size = "md" }: { size?: "md" | "sm" }) {
   return (
     <span className="flex items-center gap-2">
       <Image src={LOGO_MARK} alt="" width={markW} height={markH} priority />
-      <span className="flex flex-col leading-none">
-        <Image src={LOGO_WORDMARK} alt="Divantraa" width={wordW} height={wordH} priority />
-        {size === "md" && (
-          <>
-            <span className="mt-1 flex items-center gap-1.5">
-              <span className="h-px flex-1 bg-forest/40" />
-              <Leaf size={11} strokeWidth={2} className="shrink-0 text-forest/70" />
-              <span className="h-px flex-1 bg-forest/40" />
-            </span>
-            <span className="mt-1 whitespace-nowrap font-display italic text-[11px] text-forest/80">
-              Pure Beginnings. Healthy Living.
-            </span>
-          </>
-        )}
-      </span>
+      <Image src={LOGO_WORDMARK} alt="Divantraa" width={wordW} height={wordH} priority />
     </span>
   );
 }
 
 const NAV_LINKS = [
   { href: "/products",                            label: "All Products",      icon: <LayoutGrid size={16} /> },
-  { href: "/products?category=cold-pressed-oils", label: "Newly Launched",   icon: <Flame      size={16} /> },
   { href: "/products?category=wood-pressed-oils", label: "Wood Pressed Oils", icon: null },
   { href: "/products?category=raw-wild-forest-honey", label: "Honey",        icon: null },
+  { href: "/products?category=spices",            label: "Spices",            icon: null },
   { href: "/about",                               label: "About Us",          icon: <Info       size={16} /> },
   { href: "/contact",                             label: "Contact Us",        icon: <PhoneCall  size={16} /> },
 ];
