@@ -18,7 +18,8 @@ interface CartState {
   items:  CartLine[];
   openCart:        () => void;
   closeCart:       () => void;
-  addItem:         (item: Omit<CartLine, "quantity">, quantity?: number) => void;
+  /** Always succeeds — there's a guest cart. Still returns boolean for existing call sites. */
+  addItem:         (item: Omit<CartLine, "quantity">, quantity?: number) => boolean;
   updateQuantity:  (variantId: string, quantity: number) => void;
   getItemQuantity: (variantId: string) => number;
   removeItem:      (variantId: string) => void;
@@ -31,8 +32,8 @@ interface CartState {
 /**
  * Client-side cart mirror used for instant UI feedback (drawer, badge count).
  * Keyed on variantId so the same product in different sizes are separate lines.
- * Persisted to localStorage for guests; synced to the server cart via
- * /api/v1/cart once the user is authenticated (see hooks/useCartSync.ts).
+ * Guest cart: items can be added and viewed without signing in; sign-in is only
+ * required at checkout. Merged into the server cart on login (see hooks/useCartSync.ts).
  */
 export const useCartStore = create<CartState>()(
   persist(
@@ -43,7 +44,7 @@ export const useCartStore = create<CartState>()(
       openCart:  () => set({ isOpen: true }),
       closeCart: () => set({ isOpen: false }),
 
-      addItem: (item, quantity = 1) =>
+      addItem: (item, quantity = 1) => {
         set((state) => {
           const existing = state.items.find((i) => i.variantId === item.variantId);
           if (existing) {
@@ -56,7 +57,9 @@ export const useCartStore = create<CartState>()(
             };
           }
           return { items: [...state.items, { ...item, quantity }] };
-        }),
+        });
+        return true;
+      },
 
       updateQuantity: (variantId, quantity) =>
         set((state) => ({

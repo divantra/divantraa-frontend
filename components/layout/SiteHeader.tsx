@@ -8,7 +8,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   ShoppingCart, CircleUser, Menu, X, Search,
   ShieldCheck, LogOut, Package, User,
-  LayoutGrid, Flame, Info, PhoneCall, ChevronDown,
+  LayoutGrid, Flame, Info, PhoneCall, ChevronDown, Leaf,
 } from "lucide-react";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useCartStore } from "@/store/useCartStore";
@@ -17,9 +17,41 @@ import { useLogout } from "@/hooks/useAuth";
 import { api } from "@/lib/api";
 import type { Product } from "@/types/product";
 import { useDebounce } from "@/hooks/useDebounce";
-import { getImageUrl } from "@/lib/image.utils";
 
-const LOGO = getImageUrl("public/Divanatraa-Logo.png");
+const LOGO_MARK = "/logo-mark.png";           // 242×240 — the sun/leaf mark
+const LOGO_WORDMARK = "/logo-wordmark-header.png"; // 560×96 — "DIVANTRAA" only (no tagline, for the compact header)
+
+/**
+ * Mark + wordmark side by side. `size="sm"` for the mobile bars, `size="md"` for desktop.
+ * The tagline only shows at `md` — the mobile header bar is too tight to fit it without
+ * crowding the search/cart icons next to it.
+ */
+function LogoLockup({ size = "md" }: { size?: "md" | "sm" }) {
+  const markH = size === "md" ? 52 : 44;
+  const markW = Math.round(markH * (242 / 240));
+  const wordH = size === "md" ? 30 : 29;
+  const wordW = Math.round(wordH * (560 / 96));
+  return (
+    <span className="flex items-center gap-2">
+      <Image src={LOGO_MARK} alt="" width={markW} height={markH} priority />
+      <span className="flex flex-col leading-none">
+        <Image src={LOGO_WORDMARK} alt="Divantraa" width={wordW} height={wordH} priority />
+        {size === "md" && (
+          <>
+            <span className="mt-1 flex items-center gap-1.5">
+              <span className="h-px flex-1 bg-forest/40" />
+              <Leaf size={11} strokeWidth={2} className="shrink-0 text-forest/70" />
+              <span className="h-px flex-1 bg-forest/40" />
+            </span>
+            <span className="mt-1 whitespace-nowrap font-display italic text-[11px] text-forest/80">
+              Pure Beginnings. Healthy Living.
+            </span>
+          </>
+        )}
+      </span>
+    </span>
+  );
+}
 
 const NAV_LINKS = [
   { href: "/products",                            label: "All Products",      icon: <LayoutGrid size={16} /> },
@@ -169,7 +201,7 @@ export function SiteHeader() {
 
               {/* Logo */}
               <Link href="/" className="shrink-0">
-                <img className="h-[52px] w-auto" src={LOGO} alt="Divantraa" />
+                <LogoLockup size="md" />
               </Link>
 
               {/* Search */}
@@ -355,7 +387,7 @@ export function SiteHeader() {
             </button>
 
             <Link href="/" onClick={closeMobileMenu} className="shrink-0">
-              <img className="h-12 w-auto" src={LOGO} alt="Divantraa" />
+              <LogoLockup size="sm" />
             </Link>
 
             <div className="flex-1" />
@@ -474,7 +506,7 @@ export function SiteHeader() {
               {/* Drawer header */}
               <div className="flex items-center justify-between px-5 py-3 border-b border-ink/8 shrink-0">
                 <Link href="/" onClick={handleMobileClose} className="shrink-0">
-                  <img className="h-12 w-auto" src={LOGO} alt="Divantraa" />
+                  <LogoLockup size="sm" />
                 </Link>
                 <button onClick={handleMobileClose} aria-label="Close menu"
                   className="p-2 rounded-lg hover:bg-ink/5 transition-colors text-ink/60">

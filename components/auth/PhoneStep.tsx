@@ -92,7 +92,9 @@ export function PhoneStep({ onOtpSent }: PhoneStepProps) {
       )}
 
       <p className="mt-6 text-xs text-ink/40 leading-relaxed">
-        By continuing, you agree to Divantraa&apos;s Terms of Service and Privacy Policy.
+        By proceeding, you are agreeing to our{" "}
+        <a href="https://divantraa.com/policies/terms" target="_blank" rel="noopener noreferrer" className="underline">T&amp;C</a> and{" "}
+        <a href="https://divantraa.com/policies/privacy" target="_blank" rel="noopener noreferrer" className="underline">Privacy Policy</a>.
       </p>
     </motion.div>
   );

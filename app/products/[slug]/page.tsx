@@ -4,12 +4,12 @@ import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import Image from "next/image";
 import Link from "next/link";
-import { useState, useTransition } from "react";
-import { Star, FileCheck, ShoppingBag, Minus, Plus, Package, ChevronDown } from "lucide-react";
+import { useEffect, useState, useTransition } from "react";
+import { Star, FileCheck, ShoppingBag, Minus, Plus, Package, ChevronDown, Coins } from "lucide-react";
 import { api } from "@/lib/api";
 import { useCartStore } from "@/store/useCartStore";
 import { useAuthStore } from "@/store/useAuthStore";
-import { useUiStore } from "@/store/useUiStore";
+import { usePromoConfig, bestPrice, coinsEarned } from "@/hooks/usePromoConfig";
 import type { Product } from "@/types/product";
 import {
   getDefaultVariant,
@@ -25,6 +25,7 @@ export default function ProductDetailsPage() {
   const user = useAuthStore((s) => s.user);
   const [isPending, startTransition] = useTransition();
   const [added, setAdded] = useState(false);
+  const { data: promo } = usePromoConfig();
 
   // Variant selector — the id chosen in the "Select Variant" dropdown
   const [selectedVariantId, setSelectedVariantId] = useState<string | undefined>();
@@ -65,6 +66,14 @@ export default function ProductDetailsPage() {
     setPrevVariantId(activeVariant?.id);
   }
 
+  // Auto-advance the gallery every 10s — pauses itself whenever there's only one image to show.
+  const imageCount = displayImages.length;
+  useEffect(() => {
+    if (imageCount <= 1) return;
+    const timer = setInterval(() => setActiveImage((i) => (i + 1) % imageCount), 10_000);
+    return () => clearInterval(timer);
+  }, [imageCount, activeVariant?.id]);
+
   const cartQuantity = activeVariant ? getItemQuantity(activeVariant.id) : 0;
 
   // ── Cart actions ──────────────────────────────────────────────
@@ -77,7 +86,7 @@ export default function ProductDetailsPage() {
   const handleAddToCart = () => {
     if (!product || !activeVariant) return;
     startTransition(() => {
-      addItem(
+      const ok = addItem(
         {
           productId:    product.id,
           variantId:    activeVariant.id,
@@ -89,8 +98,8 @@ export default function ProductDetailsPage() {
         },
         1
       );
+      if (!ok) return; // not signed in — addItem already opened the login modal
       syncAddToServer(activeVariant.id, 1);
-      useUiStore.getState().openAddOns(product.id);
       setAdded(true);
       setTimeout(() => setAdded(false), 1500);
     });
@@ -99,7 +108,7 @@ export default function ProductDetailsPage() {
   const handleBuyNow = () => {
     if (!product || !activeVariant) return;
     startTransition(() => {
-      addItem({
+      const ok = addItem({
         productId:    product.id,
         variantId:    activeVariant.id,
         title:        product.title,
@@ -108,6 +117,7 @@ export default function ProductDetailsPage() {
         price:        Number(activeVariant.price),
         image:        displayImages[0] ?? "",
       });
+      if (!ok) return; // not signed in — addItem already opened the login modal
       syncAddToServer(activeVariant.id, 1);
       openCart();
     });
@@ -208,9 +218,9 @@ export default function ProductDetailsPage() {
                     </>
                   )}
                 </div>
-                {getUnitPriceLabel(activeVariant) && (
-                  <p className="text-sm text-ink/50 mt-1">{getUnitPriceLabel(activeVariant)}</p>
-                )}
+                <p className="text-xs font-medium text-ink/70 mt-2">
+                  Size: <span className="text-ink">{activeVariant.title}</span>
+                </p>
                 <p className="text-xs text-ink/40 mt-1">Inclusive of all taxes</p>
               </>
             ) : (
@@ -220,6 +230,28 @@ export default function ProductDetailsPage() {
 
           {/* Short description */}
           <p className="text-ink/60 leading-relaxed mb-5">{product.shortDescription}</p>
+
+          {/* Earn Divantraa Coins + best price with the standing promo code — for the selected variant, live-refreshing as it changes */}
+          {activeVariant && (
+            <div className="mb-5 space-y-2.5">
+              {!!promo?.coinEarnRate && (
+                <div className="flex items-center gap-2.5 rounded-xl bg-amber-50 px-4 py-3">
+                  <Coins size={18} className="text-amber-600 shrink-0" />
+                  <p className="text-sm text-amber-900">
+                    Buy now &amp; earn <span className="font-bold">{coinsEarned(Number(activeVariant.price), promo)} Divantraa Coins</span> instantly
+                  </p>
+                </div>
+              )}
+              {bestPrice(Number(activeVariant.price), promo) !== null && (
+                <div className="animate-pulse-glow flex items-center justify-between rounded-xl bg-forest px-4 py-3.5">
+                  <p className="text-sm text-white">
+                    Best Price <span className="text-lg font-bold">₹{bestPrice(Number(activeVariant.price), promo)!.toLocaleString("en-IN")}</span>
+                  </p>
+                  <span className="rounded-full bg-white/15 px-2.5 py-1 text-xs font-semibold text-white">with {promo!.promoCode}</span>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* ── Variant selector (cards) ───────────────────── */}
           {product.variants.length > 1 && (

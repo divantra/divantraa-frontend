@@ -17,6 +17,10 @@ export default function HostedPaymentStep(props: {
   onSelect: (c: PaymentChoice) => void;
   busy: boolean;
   onPay: () => void;
+  // Final totals after any promo code / redeemed coins — default to the plain quote amounts
+  // when not given, so callers that don't use those features see no change.
+  codFinalTotal?: number;
+  onlineFinalTotal?: number;
 }) {
   const { quote, selected, onSelect, busy, onPay } = props;
   const online = quote?.methods.online;
@@ -27,8 +31,10 @@ export default function HostedPaymentStep(props: {
   const isCod = selected === "cod" && codOk;
   // If online payments are unavailable the only way to order is cash on delivery.
   const useCod = isCod || (!onlineOk && codOk);
-  const total = useCod ? cod?.total : online?.total;
-  const saving = onlineOk && online && cod && cod.total > online.total ? cod.total - online.total : 0;
+  const codTotal    = props.codFinalTotal    ?? cod?.total;
+  const onlineTotal = props.onlineFinalTotal ?? online?.total;
+  const total = useCod ? codTotal : onlineTotal;
+  const saving = onlineOk && onlineTotal != null && codTotal != null && codTotal > onlineTotal ? codTotal - onlineTotal : 0;
 
   return (
     <section aria-label="Payment" className="space-y-4">
@@ -58,7 +64,7 @@ export default function HostedPaymentStep(props: {
         </>
       ) : (
         <p className="text-sm text-ink/60">
-          Keep {cod ? rupees(cod.total) : "the amount"} ready in cash when your order arrives (includes {cod ? rupees(cod.codFee) : "the"} COD handling fee).
+          Keep {codTotal != null ? rupees(codTotal) : "the amount"} ready in cash when your order arrives (includes {cod ? rupees(cod.codFee) : "the"} COD handling fee).
         </p>
       )}
 
@@ -82,7 +88,7 @@ export default function HostedPaymentStep(props: {
             </button>
           ) : (
             <button type="button" onClick={() => onSelect("cod")} className="font-medium text-forest underline">
-              Prefer cash on delivery? ({cod ? rupees(cod.total) : ""} incl. {cod ? rupees(cod.codFee) : ""} fee)
+              Prefer cash on delivery? ({codTotal != null ? rupees(codTotal) : ""} incl. {cod ? rupees(cod.codFee) : ""} fee)
             </button>
           )}
         </p>

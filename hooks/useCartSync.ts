@@ -30,7 +30,7 @@ export function useCartSync() {
     if (!isHydrated) return;
     if (!user) {
       lastUserId.current = null;
-      return;
+      return; // guest cart stays in localStorage until login, then gets merged below
     }
     // Already synced for this session
     if (lastUserId.current === user.id) return;

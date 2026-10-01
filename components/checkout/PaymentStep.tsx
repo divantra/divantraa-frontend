@@ -35,6 +35,10 @@ interface Props {
   onQrExpired: () => void;
   /** Open Cashfree's own checkout (any bank / any app) */
   onHostedCheckout: () => void;
+  // Final totals after any promo code / redeemed coins — default to the plain quote amounts
+  // when not given, so callers that don't use those features see no change.
+  codFinalTotal?: number;
+  onlineFinalTotal?: number;
 }
 
 export default function PaymentStep(p: Props) {
@@ -44,7 +48,9 @@ export default function PaymentStep(p: Props) {
   const onlineOk = !!online?.enabled;
   const codOk = !!cod?.enabled;
   const pct = quote?.onlineDiscountPercent ?? 0;
-  const onlineAmount = online ? rupees(online.total) : "—";
+  const codTotal    = p.codFinalTotal    ?? cod?.total;
+  const onlineTotalN = p.onlineFinalTotal ?? online?.total;
+  const onlineAmount = onlineTotalN != null ? rupees(onlineTotalN) : "—";
   const sandbox = quote?.gateway?.mode === "sandbox";
 
   // ── selections ──
@@ -87,7 +93,7 @@ export default function PaymentStep(p: Props) {
 
   useEffect(() => { p.onRequest(request); }, [request]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const payAmount = selected === "cod" ? cod?.total : online?.total;
+  const payAmount = selected === "cod" ? codTotal : onlineTotalN;
   const payLabel = selected === "cod" ? `Place order · ${payAmount != null ? rupees(payAmount) : ""}` : `Pay ${payAmount != null ? rupees(payAmount) : ""} securely`;
   const chip = pct > 0 ? (
     <span className="inline-flex items-center gap-1 rounded-md bg-green-50 px-2 py-0.5 text-[11px] font-medium text-green-700">
@@ -220,11 +226,11 @@ export default function PaymentStep(p: Props) {
         <div className={box("cod", !codOk)}>
           <MethodRow id="cod" selected={selected === "cod"} disabled={!codOk} onSelect={onSelect}
             icon={<Banknote size={20} />} title="Cash on delivery"
-            subtitle={cod ? `Includes ${rupees(cod.codFee)} COD handling fee` : "Pay when your order arrives"} amount={cod ? rupees(cod.total) : "—"}>
+            subtitle={cod ? `Includes ${rupees(cod.codFee)} COD handling fee` : "Pay when your order arrives"} amount={codTotal != null ? rupees(codTotal) : "—"}>
             <p className="text-xs text-ink/60">
-              Keep {cod ? rupees(cod.total) : "the amount"} ready in cash when your order arrives.
-              {onlineOk && online && cod && cod.total > online.total && (
-                <> Pay online instead and save <span className="font-medium text-green-700">{rupees(cod.total - online.total)}</span>.</>
+              Keep {codTotal != null ? rupees(codTotal) : "the amount"} ready in cash when your order arrives.
+              {onlineOk && onlineTotalN != null && codTotal != null && codTotal > onlineTotalN && (
+                <> Pay online instead and save <span className="font-medium text-green-700">{rupees(codTotal - onlineTotalN)}</span>.</>
               )}
             </p>
           </MethodRow>

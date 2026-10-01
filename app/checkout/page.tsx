@@ -7,8 +7,9 @@ import { useRouter } from "next/navigation";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import {
   MapPin, Plus, Check, ChevronRight, Truck, Banknote,
-  AlertCircle, ArrowLeft, Loader2, ShieldCheck,
+  AlertCircle, ArrowLeft, Loader2, ShieldCheck, LocateFixed,
 } from "lucide-react";
+import { detectCurrentAddress } from "@/lib/geolocation";
 import { useCartStore } from "@/store/useCartStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { api } from "@/lib/api";
@@ -92,6 +93,8 @@ export default function CheckoutPage() {
   const [showNewForm,     setShowNewForm]   = useState(false);
   const [form,            setForm]          = useState<AddressForm>(emptyForm);
   const [formError,       setFormError]     = useState<string | null>(null);
+  const [locating,        setLocating]      = useState(false);
+  const [locateNotice,    setLocateNotice]  = useState<string | null>(null);
   const [orderError,      setOrderError]    = useState<string | null>(null);
   const [submitting,      setSubmitting]    = useState(false);
   const [submitted,       setSubmitted]     = useState(false); // prevent double-submit
@@ -112,6 +115,32 @@ export default function CheckoutPage() {
   const totals  = quote ? (isCod ? quote.methods.cod : quote.methods.online) : undefined;
   const sub     = subtotal();
   const unavailable = quote?.lines.filter((l) => !l.available) ?? [];
+
+  // Divantraa Coins: balance from the server, redemption is optional and capped client-side just for a
+  // smooth slider — the server re-validates the real balance and cap regardless.
+  const { data: coins } = useQuery<{ balance: number; earnRate: number; redemptionCapPercent: number }>({
+    queryKey: ["my-coins"],
+    queryFn:  () => api.get("/user/coins").then((r) => r.data.data),
+    enabled:  !!user,
+    staleTime: 15_000,
+  });
+  const [redeemCoins, setRedeemCoins] = useState(0);
+  const coinCap = totals ? Math.floor(totals.subtotal * ((coins?.redemptionCapPercent ?? 20) / 100)) : 0;
+  const maxRedeemable = Math.max(0, Math.min(coins?.balance ?? 0, coinCap));
+  useEffect(() => { if (redeemCoins > maxRedeemable) setRedeemCoins(maxRedeemable); }, [maxRedeemable, redeemCoins]);
+
+  // A preview only — mirrors applyCoinsAndPromo() server-side so this page doesn't understate the
+  // discount while typing; the order-creation response is always what's actually charged.
+  function withCoinsAndPromo(t: typeof totals) {
+    if (!t) return { discount: 0, total: undefined as number | undefined, promoDiscount: 0 };
+    const promo = quote?.promoCode ? Math.round(t.subtotal * (quote.promoDiscountPercent / 100) * 100) / 100 : 0;
+    const discount = Math.max(t.discount, promo) + redeemCoins;
+    const total = Math.round((t.subtotal + t.shippingFee + t.codFee - discount) * 100) / 100;
+    return { discount, total, promoDiscount: promo };
+  }
+  const { total: finalTotal, promoDiscount } = withCoinsAndPromo(totals);
+  const codFinalTotal    = withCoinsAndPromo(quote?.methods.cod).total;
+  const onlineFinalTotal = withCoinsAndPromo(quote?.methods.online).total;
 
   // Load Cashfree's SDK (from its CDN) in the mode the server told us to use. If it can't load
   // (blocked / offline / domain not enabled) the payment step falls back to Cashfree's hosted checkout.
@@ -210,6 +239,42 @@ export default function CheckoutPage() {
     saveAddress.mutate(form);
   }
 
+  /** Detects the browser's current position and fills the (already-open) address form from it. Never auto-saves. */
+  async function handleUseLocation() {
+    if (locating) return;
+    setLocating(true);
+    setFormError(null);
+    setLocateNotice(null);
+    try {
+      const addr = await detectCurrentAddress();
+      const matchedState = INDIAN_STATES.find((s) => s.toLowerCase() === addr.state.trim().toLowerCase()) ?? "";
+      setForm((f) => ({
+        ...f,
+        line1: addr.line1 || f.line1,
+        line2: addr.line2 || f.line2,
+        city: addr.city || f.city,
+        state: matchedState || f.state,
+        pincode: addr.pincode || f.pincode,
+      }));
+      setLocateNotice("Filled from your current location — please check it's correct before saving.");
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : "Couldn't detect your location. Please enter your address manually.");
+    } finally {
+      setLocating(false);
+    }
+  }
+
+  /** Opens the blank new-address form, prefilled with the account's name/phone. Shared by "Add new" and "Use my location". */
+  function openNewAddressForm() {
+    const mobile = user?.mobile ?? "";
+    const phone  = mobile.startsWith("+91") ? mobile.slice(3) : mobile;
+    setForm({ ...emptyForm, fullName: user?.name ?? "", phone });
+    setFormError(null);
+    setLocateNotice(null);
+    setShowNewForm(true);
+    setSelectedAddr(null);
+  }
+
   /** Push the local cart to the server cart so the backend prices exactly what the customer sees. */
   async function syncCartToServer() {
     await api.delete("/cart");
@@ -227,18 +292,22 @@ export default function CheckoutPage() {
     };
   }
 
-  /** Shared checks before any payment starts. Returns the shipping body, or null after showing the reason. */
+  /** Shared checks before any payment starts. Returns the shipping body (+ coins/promo), or null after showing the reason. */
   function preflight() {
     setOrderError(null);
     setNotice(null);
     const shippingBody = selectedAddress();
     if (!selectedAddr || !shippingBody) { setOrderError("Please select a delivery address."); return null; }
     if (unavailable.length > 0) { setOrderError("Some items in your cart are no longer available. Please review your cart."); return null; }
-    return shippingBody;
+    return {
+      ...shippingBody,
+      ...(redeemCoins > 0 ? { coinsToRedeem: redeemCoins } : {}),
+      ...(quote?.promoCode ? { promoCode: quote.promoCode } : {}),
+    };
   }
 
   /** Create (or re-use) our order and the matching Cashfree order for the current cart. */
-  async function prepareOrder(shippingBody: NonNullable<ReturnType<typeof selectedAddress>>) {
+  async function prepareOrder(shippingBody: NonNullable<ReturnType<typeof preflight>>) {
     await syncCartToServer();
     const { data } = await api.post("/orders/create-payment-order", shippingBody);
     return data.data as { orderId: string; orderNumber: string; paymentSessionId: string };
@@ -472,24 +541,42 @@ export default function CheckoutPage() {
 
               {/* Add new address toggle */}
               {!showNewForm && (
-                <button
-                  onClick={() => {
-                    const mobile = user?.mobile ?? "";
-                    const phone  = mobile.startsWith("+91") ? mobile.slice(3) : mobile;
-                    setForm({ ...emptyForm, fullName: user?.name ?? "", phone });
-                    setShowNewForm(true);
-                    setSelectedAddr(null);
-                  }}
-                  className="flex items-center gap-2 text-sm text-leaf font-medium hover:underline"
-                >
-                  <Plus size={14} /> Add new address
-                </button>
+                <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+                  <button
+                    onClick={openNewAddressForm}
+                    className="flex items-center gap-2 text-sm text-leaf font-medium hover:underline"
+                  >
+                    <Plus size={14} /> Add new address
+                  </button>
+                  <button
+                    onClick={() => { openNewAddressForm(); handleUseLocation(); }}
+                    className="flex items-center gap-2 text-sm text-leaf font-medium hover:underline"
+                  >
+                    <LocateFixed size={14} /> Use my current location
+                  </button>
+                </div>
               )}
 
               {/* New address form */}
               {showNewForm && (
                 <div className="border border-ink/10 rounded-xl p-5 mt-4">
-                  <h3 className="font-medium text-sm text-ink mb-4">New Address</h3>
+                  <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+                    <h3 className="font-medium text-sm text-ink">New Address</h3>
+                    <button
+                      onClick={handleUseLocation}
+                      disabled={locating}
+                      className="flex items-center gap-1.5 text-xs text-leaf font-medium hover:underline disabled:opacity-50"
+                    >
+                      {locating ? <Loader2 size={13} className="animate-spin" /> : <LocateFixed size={13} />}
+                      {locating ? "Detecting your location…" : "Use my current location"}
+                    </button>
+                  </div>
+
+                  {locateNotice && !formError && (
+                    <div className="mb-3 flex gap-2 text-sm text-leaf bg-leaf/10 rounded-lg p-3">
+                      <MapPin size={15} className="shrink-0 mt-0.5" /> {locateNotice}
+                    </div>
+                  )}
 
                   {formError && (
                     <div className="mb-3 flex gap-2 text-sm text-red-600 bg-red-50 rounded-lg p-3">
@@ -632,6 +719,7 @@ export default function CheckoutPage() {
                   quote={quote} selected={choice}
                   onSelect={(c) => { setChoice(c); setNotice(null); setOrderError(null); }}
                   busy={phase !== "idle"} onPay={handlePay}
+                  codFinalTotal={codFinalTotal} onlineFinalTotal={onlineFinalTotal}
                 />
               ) : (
                 <>
@@ -655,6 +743,7 @@ export default function CheckoutPage() {
                   busy={phase !== "idle" || (!!waiting && waiting.kind !== "qr")} onPay={handlePay}
                   qr={qr} onShowQr={showQr} onQrExpired={qrExpired}
                   onHostedCheckout={handleHostedCheckout}
+                  codFinalTotal={codFinalTotal} onlineFinalTotal={onlineFinalTotal}
                 />
                 </>
               )}
@@ -701,15 +790,48 @@ export default function CheckoutPage() {
                   <span>COD charge</span><span>{rupees(totals.codFee)}</span>
                 </div>
               )}
-              {!isCod && totals && totals.discount > 0 && (
+              {promoDiscount > totals!.discount && quote?.promoCode && (
+                <div className="flex justify-between text-green-700">
+                  <span>Best price with {quote.promoCode}</span><span>−{rupees(promoDiscount)}</span>
+                </div>
+              )}
+              {!isCod && totals && totals.discount >= promoDiscount && totals.discount > 0 && (
                 <div className="flex justify-between text-green-700">
                   <span>Online payment discount</span><span>−{rupees(totals.discount)}</span>
                 </div>
               )}
+              {redeemCoins > 0 && (
+                <div className="flex justify-between text-green-700">
+                  <span>Divantraa Coins redeemed</span><span>−{rupees(redeemCoins)}</span>
+                </div>
+              )}
               <div className="border-t border-ink/8 pt-2 flex justify-between font-semibold text-ink">
-                <span>Total payable</span><span>{totals ? rupees(totals.total) : "—"}</span>
+                <span>Total payable</span><span>{finalTotal !== undefined ? rupees(finalTotal) : "—"}</span>
               </div>
             </div>
+
+            {user && maxRedeemable > 0 && (
+              <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3">
+                <div className="flex items-center justify-between text-xs font-medium text-amber-800">
+                  <span>You have {coins?.balance ?? 0} Divantraa Coins (₹{coins?.balance ?? 0})</span>
+                  <button
+                    type="button"
+                    onClick={() => setRedeemCoins((c) => (c > 0 ? 0 : maxRedeemable))}
+                    className="text-amber-700 underline underline-offset-2"
+                  >
+                    {redeemCoins > 0 ? "Remove" : `Use up to ${maxRedeemable}`}
+                  </button>
+                </div>
+                {redeemCoins > 0 && (
+                  <input
+                    type="range" min={0} max={maxRedeemable} value={redeemCoins}
+                    onChange={(e) => setRedeemCoins(Number(e.target.value))}
+                    className="mt-2 w-full accent-amber-600"
+                  />
+                )}
+              </div>
+            )}
+
             <p className="mt-3 text-xs text-ink/40 text-center">
               Inclusive of all taxes · Free returns within 7 days
             </p>

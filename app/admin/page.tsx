@@ -15,6 +15,8 @@ import { useAuthStore } from "@/store/useAuthStore";
 import type { Product } from "@/types/product";
 import { getAxiosErrorMessage } from "@/lib/errorUtils";
 import PaymentsPanel, { RefundBox, CancelLineBox } from "./PaymentsPanel";
+import { VariantTable } from "./VariantManager";
+import type { Category } from "@/types/product";
 
 // ── Types ─────────────────────────────────────────────────────
 
@@ -62,14 +64,25 @@ interface OrderMeta { total: number; page: number; limit: number; pages: number 
 interface NewProductForm {
   title: string; slug: string; shortDescription: string; description: string;
   categoryId: string; images: string; isFeatured: boolean; isRecommended: boolean;
-  variantTitle: string; variantSku: string; variantPrice: string; variantStock: string;
+  variantTitle: string; variantSku: string; variantPackaging: string; variantPrice: string; variantStock: string;
 }
 
 const emptyForm: NewProductForm = {
   title: "", slug: "", shortDescription: "", description: "",
   categoryId: "", images: "", isFeatured: false, isRecommended: false,
-  variantTitle: "", variantSku: "", variantPrice: "", variantStock: "0",
+  variantTitle: "", variantSku: "", variantPackaging: "", variantPrice: "", variantStock: "0",
 };
+
+const PACKAGING_OPTIONS = [
+  { value: "GLASS",   label: "Glass" },
+  { value: "TIN",     label: "Tin" },
+  { value: "PLASTIC", label: "Plastic / PET" },
+  { value: "SPRAY",   label: "Spray" },
+  { value: "CAN",     label: "Can" },
+  { value: "POUCH",   label: "Pouch / Bag" },
+  { value: "BOX",     label: "Box / Combo" },
+  { value: "OTHER",   label: "Other" },
+];
 
 // ── Status config ──────────────────────────────────────────────
 
@@ -121,7 +134,6 @@ export default function AdminPage() {
   const [form,      setForm]      = useState<NewProductForm>(emptyForm);
   const [formError, setFormError] = useState<string | null>(null);
   const [expanded,  setExpanded]  = useState<Set<string>>(new Set());
-  const [stockEdit, setStockEdit] = useState<Record<string, string>>({});
 
   // User mgmt state
   const [userMobile,    setUserMobile]    = useState("");
@@ -147,6 +159,12 @@ export default function AdminPage() {
     enabled: isAdmin,
   });
 
+  const { data: categories } = useQuery<Category[]>({
+    queryKey: ["admin-categories"],
+    queryFn:  async () => (await api.get<{ data: Category[] }>("/categories/active")).data.data,
+    enabled: isAdmin,
+  });
+
   const { data: ordersData, isLoading: ordersLoading, refetch: refetchOrders } = useQuery<{ data: AdminOrder[]; meta: OrderMeta }>({
     queryKey: ["admin-orders", orderStatus, orderSearch, orderPage],
     queryFn:  async () => {
@@ -162,12 +180,6 @@ export default function AdminPage() {
   const deleteProduct = useMutation({
     mutationFn: (id: string) => api.delete(`/admin/products/${id}`),
     onSuccess:  () => qc.invalidateQueries({ queryKey: ["admin-products"] }),
-  });
-
-  const adjustStock = useMutation({
-    mutationFn: ({ variantId, value }: { variantId: string; value: number }) =>
-      api.patch(`/admin/variants/${variantId}/stock`, { operation: "set", value }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-products"] }),
   });
 
   const createProduct = useMutation({
@@ -240,14 +252,15 @@ export default function AdminPage() {
     title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
   const handleCreate = () => {
-    if (!form.title || !form.slug || !form.description || !form.variantSku || !form.variantPrice) {
-      setFormError("Title, slug, description, variant SKU and price are required."); return;
+    if (!form.title || !form.slug || !form.description || !form.categoryId || !form.variantSku || !form.variantPrice) {
+      setFormError("Title, slug, description, category, variant SKU and price are required."); return;
     }
     createProduct.mutate({
       title: form.title, slug: form.slug, shortDescription: form.shortDescription || undefined,
       description: form.description, categoryId: form.categoryId || undefined,
       images: form.images.split(",").map(s => s.trim()).filter(Boolean), isFeatured: form.isFeatured, isRecommended: form.isRecommended,
       variants: [{ title: form.variantTitle || "Default", options: {}, sku: form.variantSku,
+        packaging: form.variantPackaging || undefined,
         price: parseFloat(form.variantPrice), stock: parseInt(form.variantStock, 10) || 0,
         isDefault: true, images: [] }],
     });
@@ -405,7 +418,7 @@ export default function AdminPage() {
                       </div>
                       {/* Items + total */}
                       <div className="text-right shrink-0 hidden sm:block">
-                        <p className="text-sm text-ink">₹{Number(order.total).toFixed(0)}</p>
+                        <p className="text-sm text-ink">₹{Number(order.total).toFixed(2)}</p>
                         <p className="text-xs text-ink/40">{(order.lines ?? order.items).length} item{(order.lines ?? order.items).length !== 1 ? "s" : ""}</p>
                       </div>
                       {/* Payment */}
@@ -499,9 +512,9 @@ export default function AdminPage() {
                                   )}
                                 </div>
                                 <div className="text-right shrink-0">
-                                  <p className="text-sm font-medium">₹{Number(item.lineTotal ?? Number(item.price) * item.quantity).toFixed(0)}</p>
+                                  <p className="text-sm font-medium">₹{Number(item.lineTotal ?? Number(item.price) * item.quantity).toFixed(2)}</p>
                                   <p className="text-xs text-ink/40">Qty {item.quantity} × ₹{Number(item.price)}</p>
-                                  {Number(item.refundedAmount ?? 0) > 0 && <p className="text-[10px] text-ink/40">refunded ₹{Number(item.refundedAmount).toFixed(0)}</p>}
+                                  {Number(item.refundedAmount ?? 0) > 0 && <p className="text-[10px] text-ink/40">refunded ₹{Number(item.refundedAmount).toFixed(2)}</p>}
                                 </div>
                               </div>
                             );
@@ -510,7 +523,7 @@ export default function AdminPage() {
 
                         {/* Price summary */}
                         <div className="mt-4 border-t border-ink/5 pt-3 space-y-1 text-sm">
-                          <div className="flex justify-between text-ink/60"><span>Subtotal</span><span>₹{Number(order.subtotal).toFixed(0)}</span></div>
+                          <div className="flex justify-between text-ink/60"><span>Subtotal</span><span>₹{Number(order.subtotal).toFixed(2)}</span></div>
                           <div className="flex justify-between text-ink/60">
                             <span>Shipping</span>
                             <span>{Number(order.shippingFee) === 0 ? <span className="text-green-600">Free</span> : `₹${Number(order.shippingFee)}`}</span>
@@ -519,7 +532,7 @@ export default function AdminPage() {
                             <div className="flex justify-between text-ink/60"><span>COD Charge</span><span>₹{Number(order.codFee)}</span></div>
                           )}
                           <div className="flex justify-between font-semibold text-ink border-t border-ink/5 pt-1 mt-1">
-                            <span>Total</span><span>₹{Number(order.total).toFixed(0)}</span>
+                            <span>Total</span><span>₹{Number(order.total).toFixed(2)}</span>
                           </div>
                         </div>
                       </div>
@@ -635,9 +648,12 @@ export default function AdminPage() {
                   <input value={form.shortDescription} onChange={e => setForm(f => ({ ...f, shortDescription: e.target.value }))}
                     placeholder="One-line teaser" className={inputCls} />
                 </Field>
-                <Field label="Category ID">
-                  <input value={form.categoryId} onChange={e => setForm(f => ({ ...f, categoryId: e.target.value }))}
-                    placeholder="UUID" className={inputCls} />
+                <Field label="Category">
+                  <select value={form.categoryId} onChange={e => setForm(f => ({ ...f, categoryId: e.target.value }))}
+                    className={inputCls}>
+                    <option value="">— select —</option>
+                    {categories?.map(c => <option key={c.id} value={c.id}>{"— ".repeat(c.level)}{c.name}</option>)}
+                  </select>
                 </Field>
                 <Field label="Description *" className="sm:col-span-2">
                   <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
@@ -654,9 +670,16 @@ export default function AdminPage() {
                       <input value={form.variantTitle} onChange={e => setForm(f => ({ ...f, variantTitle: e.target.value }))}
                         placeholder="500 ml Glass Jar" className={inputCls} />
                     </Field>
-                    <Field label="SKU *">
+                    <Field label="Base SKU *">
                       <input value={form.variantSku} onChange={e => setForm(f => ({ ...f, variantSku: e.target.value }))}
-                        placeholder="GHEE-A2-500-G" className={inputCls} />
+                        placeholder="GHEE-A2-500" className={inputCls} />
+                    </Field>
+                    <Field label="Packaging">
+                      <select value={form.variantPackaging} onChange={e => setForm(f => ({ ...f, variantPackaging: e.target.value }))}
+                        className={inputCls}>
+                        <option value="">— none —</option>
+                        {PACKAGING_OPTIONS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+                      </select>
                     </Field>
                     <Field label="Price (₹) *">
                       <input type="number" min="0" value={form.variantPrice}
@@ -669,6 +692,7 @@ export default function AdminPage() {
                         placeholder="100" className={inputCls} />
                     </Field>
                   </div>
+                  <p className="text-[11px] text-ink/40 mt-2">The packaging suffix (e.g. -GLS) is appended to the SKU automatically if not already present. Add more sizes after creating, from the product row below.</p>
                 </div>
                 <div className="flex items-center gap-2 sm:col-span-2">
                   <input id="isFeatured" type="checkbox" checked={form.isFeatured}
@@ -726,47 +750,7 @@ export default function AdminPage() {
                       className="text-ink/30 hover:text-red-500 transition-colors p-1"><Trash2 size={16} /></button>
                   </div>
                 </div>
-                {expanded.has(product.id) && (
-                  <div className="border-t border-ink/5 bg-ink/[0.02] overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead><tr className="text-xs text-ink/40 border-b border-ink/5">
-                        <th className="text-left px-5 py-2 font-medium">Variant</th>
-                        <th className="text-left px-5 py-2 font-medium">SKU</th>
-                        <th className="text-right px-5 py-2 font-medium">Price</th>
-                        <th className="text-right px-5 py-2 font-medium">Stock</th>
-                        <th className="text-right px-5 py-2 font-medium w-36">Set stock</th>
-                      </tr></thead>
-                      <tbody>
-                        {product.variants.map(variant => (
-                          <tr key={variant.id} className="border-b border-ink/5 last:border-0">
-                            <td className="px-5 py-2.5 text-ink/80">{variant.title}{variant.isDefault && <span className="ml-1.5 text-xs text-leaf">(default)</span>}</td>
-                            <td className="px-5 py-2.5 font-mono text-xs text-ink/50">{variant.sku}</td>
-                            <td className="px-5 py-2.5 text-right">₹{Number(variant.price)}</td>
-                            <td className="px-5 py-2.5 text-right">
-                              <span className={variant.stock === 0 ? "text-red-500" : variant.stock <= (variant.lowStockAlert ?? 5) ? "text-amber-500" : "text-green-600"}>
-                                {variant.stock}
-                              </span>
-                            </td>
-                            <td className="px-5 py-2.5">
-                              <div className="flex items-center justify-end gap-2">
-                                <input type="number" min="0" value={stockEdit[variant.id] ?? ""}
-                                  onChange={e => setStockEdit(prev => ({ ...prev, [variant.id]: e.target.value }))}
-                                  placeholder={String(variant.stock)} className="w-16 border border-ink/15 rounded-lg px-2 py-1 text-xs text-right" />
-                                <button onClick={() => {
-                                  const val = parseInt(stockEdit[variant.id] ?? "", 10);
-                                  if (!isNaN(val)) {
-                                    adjustStock.mutate({ variantId: variant.id, value: val });
-                                    setStockEdit(prev => { const next = { ...prev }; delete next[variant.id]; return next; });
-                                  }
-                                }} className="text-leaf hover:text-leaf/70 text-xs font-medium">Save</button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+                {expanded.has(product.id) && <VariantTable product={product} />}
               </div>
             ))}
           </div>

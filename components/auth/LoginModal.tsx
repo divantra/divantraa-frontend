@@ -249,8 +249,8 @@ export function LoginModal() {
                           <span>ⓘ</span>
                           <span>
                             By proceeding, you are agreeing to our{" "}
-                            <a href="#" className="underline">T&amp;C</a> and{" "}
-                            <a href="#" className="underline">Privacy Policy</a>.
+                            <a href="https://divantraa.com/policies/terms" target="_blank" rel="noopener noreferrer" className="underline">T&amp;C</a> and{" "}
+                            <a href="https://divantraa.com/policies/privacy" target="_blank" rel="noopener noreferrer" className="underline">Privacy Policy</a>.
                           </span>
                         </p>
                       </>

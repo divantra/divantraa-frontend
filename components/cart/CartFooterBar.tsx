@@ -35,7 +35,7 @@ export function CartFooterBar() {
         <div className="flex -space-x-3">
           {visibleItems.map((item) => (
             <div
-              key={item.productId}
+              key={item.variantId}
               className="h-8 w-8 rounded-full overflow-hidden border-0">
               <Image
                 src={item.image}

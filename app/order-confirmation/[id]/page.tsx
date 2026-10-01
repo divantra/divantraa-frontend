@@ -188,7 +188,7 @@ export default function OrderConfirmationPage({ params }: { params: Promise<{ id
         <div className="px-6 py-4">
           <div className="space-y-2 text-sm">
             <div className="flex justify-between text-ink/60">
-              <span>Subtotal</span><span>₹{Number(order.subtotal).toFixed(0)}</span>
+              <span>Subtotal</span><span>₹{Number(order.subtotal).toFixed(2)}</span>
             </div>
             <div className="flex justify-between text-ink/60">
               <span>Shipping</span>
