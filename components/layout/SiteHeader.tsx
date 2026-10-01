@@ -21,16 +21,27 @@ import { useDebounce } from "@/hooks/useDebounce";
 const LOGO_MARK = "/logo-mark.png";           // 242×240 — the sun/leaf mark
 const LOGO_WORDMARK = "/logo-wordmark-header.png"; // 560×96 — "DIVANTRAA" only (no tagline, for the compact header)
 
-/** Mark + wordmark side by side. `size="sm"` for the mobile bars, `size="md"` for desktop. */
+/**
+ * Mark + wordmark side by side. `size="sm"` for the mobile bars, `size="md"` for desktop.
+ * The tagline only shows at `md` — the mobile header bar is too tight to fit it without
+ * crowding the search/cart icons next to it.
+ */
 function LogoLockup({ size = "md" }: { size?: "md" | "sm" }) {
   const markH = size === "md" ? 52 : 44;
   const markW = Math.round(markH * (242 / 240));
-  const wordH = size === "md" ? 34 : 29;
+  const wordH = size === "md" ? 30 : 29;
   const wordW = Math.round(wordH * (560 / 96));
   return (
     <span className="flex items-center gap-2">
       <Image src={LOGO_MARK} alt="" width={markW} height={markH} priority />
-      <Image src={LOGO_WORDMARK} alt="Divantraa" width={wordW} height={wordH} priority />
+      <span className="flex flex-col leading-none">
+        <Image src={LOGO_WORDMARK} alt="Divantraa" width={wordW} height={wordH} priority />
+        {size === "md" && (
+          <span className="mt-1 whitespace-nowrap font-display italic text-[11px] text-forest/80">
+            Pure Beginnings. Healthy Living.
+          </span>
+        )}
+      </span>
     </span>
   );
 }

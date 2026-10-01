@@ -195,9 +195,9 @@ export default function CartPage() {
                       <div className="flex items-center border border-ink/15 rounded-full w-fit">
                         <button
                           onClick={() => handleQuantityChange(item.variantId, item.quantity - 1)}
-                          disabled={item.quantity <= 1 || isSyncing}
+                          disabled={isSyncing}
                           className="p-2 disabled:opacity-30"
-                          aria-label="Decrease"
+                          aria-label={item.quantity <= 1 ? "Remove" : "Decrease"}
                         >
                           <Minus size={12} />
                         </button>

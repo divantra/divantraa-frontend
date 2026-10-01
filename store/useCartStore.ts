@@ -1,7 +1,5 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { useAuthStore } from "./useAuthStore";
-import { useUiStore } from "./useUiStore";
 
 export interface CartLine {
   productId:      string;
@@ -20,7 +18,7 @@ interface CartState {
   items:  CartLine[];
   openCart:        () => void;
   closeCart:       () => void;
-  /** Returns false (and opens the sign-in modal) instead of adding when logged out. */
+  /** Always succeeds — there's a guest cart. Still returns boolean for existing call sites. */
   addItem:         (item: Omit<CartLine, "quantity">, quantity?: number) => boolean;
   updateQuantity:  (variantId: string, quantity: number) => void;
   getItemQuantity: (variantId: string) => number;
@@ -31,18 +29,11 @@ interface CartState {
   totalPrice:      () => number;
 }
 
-/** No guest cart: signing in is required before anything can be added or the drawer opened. */
-function requireAuth(notice = "Please sign in to add items to your cart."): boolean {
-  if (useAuthStore.getState().user) return true;
-  useUiStore.getState().openLoginModal(notice);
-  return false;
-}
-
 /**
  * Client-side cart mirror used for instant UI feedback (drawer, badge count).
  * Keyed on variantId so the same product in different sizes are separate lines.
- * Requires sign-in (see `requireAuth` above) — there is no guest cart. Synced to
- * the server cart via /api/v1/cart once the user is authenticated (see hooks/useCartSync.ts).
+ * Guest cart: items can be added and viewed without signing in; sign-in is only
+ * required at checkout. Merged into the server cart on login (see hooks/useCartSync.ts).
  */
 export const useCartStore = create<CartState>()(
   persist(
@@ -50,11 +41,10 @@ export const useCartStore = create<CartState>()(
       isOpen: false,
       items:  [],
 
-      openCart:  () => { if (requireAuth("Please sign in to view your cart.")) set({ isOpen: true }); },
+      openCart:  () => set({ isOpen: true }),
       closeCart: () => set({ isOpen: false }),
 
       addItem: (item, quantity = 1) => {
-        if (!requireAuth()) return false;
         set((state) => {
           const existing = state.items.find((i) => i.variantId === item.variantId);
           if (existing) {
