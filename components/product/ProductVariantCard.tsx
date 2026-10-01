@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { ShoppingCart } from "lucide-react";
+import { ShoppingCart, Star, Flame } from "lucide-react";
 import { getVariantImages, getUnitPriceLabel, getDiscountPercent } from "@/types/product";
 import { bestPrice, type PromoConfig } from "@/hooks/usePromoConfig";
 import type { Product, ProductVariant } from "@/types/product";
@@ -22,25 +22,47 @@ export default function ProductVariantCard({
   const off = getDiscountPercent(variant);
   const best = bestPrice(Number(variant.price), promo);
   const soldOut = variant.trackInventory && variant.stock === 0;
+  const sellingFast = variant.trackInventory && variant.stock > 0 && variant.stock <= variant.lowStockAlert;
 
   return (
     <Link
       href={`/products/${product.slug}`}
       data-variant-card
-      className="group relative flex w-[160px] sm:w-[185px] shrink-0 snap-start flex-col overflow-hidden rounded-2xl border border-ink/10 bg-white shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
+      className="group relative flex flex-col overflow-hidden rounded-2xl border border-ink/8 bg-white shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
     >
-      <div className="relative h-[150px] sm:h-[170px] w-full bg-white overflow-hidden">
+      <div className="relative aspect-square w-full bg-cream overflow-hidden">
         {image ? (
-          <Image src={image} alt={variant.title} fill sizes="200px" className="object-cover p-1 transition-transform duration-300 group-hover:scale-[1.03]" />
+          <Image src={image} alt={variant.title} fill sizes="(max-width: 640px) 50vw, 240px" className="object-cover transition-transform duration-300 group-hover:scale-[1.03]" />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-xs text-ink/30">No image</div>
         )}
+
+        <div className="absolute inset-x-0 top-0 flex items-start justify-between p-2">
+          {off > 0 ? (
+            <span className="rounded-full bg-forest px-2 py-0.5 text-[10px] font-semibold text-white">{off}% OFF</span>
+          ) : product.isFeatured ? (
+            <span className="flex items-center gap-0.5 rounded-full bg-gold px-2 py-0.5 text-[10px] font-semibold text-white">
+              <Star size={9} className="fill-white" /> Best Seller
+            </span>
+          ) : <span />}
+          {sellingFast && !soldOut && (
+            <span className="flex items-center gap-0.5 rounded-full bg-clay px-2 py-0.5 text-[10px] font-semibold text-white">
+              <Flame size={9} className="fill-white" /> Selling fast
+            </span>
+          )}
+        </div>
       </div>
 
-      <div className="flex flex-1 flex-col px-3 pb-3 pt-2">
+      <div className="flex flex-1 flex-col px-3 pb-3 pt-2.5">
         <p className="text-xs font-medium text-ink/70 truncate">{variant.title}</p>
 
-        <div className="mt-1 flex items-baseline gap-1.5 flex-wrap">
+        {typeof product.avgRating === "number" && (product.reviewCount ?? 0) > 0 && (
+          <span className="mt-0.5 flex items-center gap-1 text-[10px] text-ink/50">
+            <Star size={10} className="fill-gold text-gold" /> {product.avgRating.toFixed(1)} ({product.reviewCount})
+          </span>
+        )}
+
+        <div className="mt-1.5 flex items-baseline gap-1.5 flex-wrap">
           <span className="text-base font-bold text-ink">₹{Number(variant.price).toLocaleString("en-IN")}</span>
           {off > 0 && <span className="text-[11px] text-ink/40 line-through">₹{Number(variant.compareAtPrice).toLocaleString("en-IN")}</span>}
         </div>

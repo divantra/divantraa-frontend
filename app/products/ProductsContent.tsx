@@ -25,7 +25,7 @@ export default function ProductsContent() {
   return (
     <main className="max-w-7xl mx-auto px-4 sm:px-6 py-10 min-h-[60vh]">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="font-display text-2xl sm:text-3xl text-ink">
+        <h1 className="font-display text-2xl sm:text-3xl text-ink capitalize">
           {category ? category.replace(/-/g, " ") : "Shop now"}
         </h1>
         <select
@@ -46,9 +46,9 @@ export default function ProductsContent() {
         <p className="text-ink/40">No products found in this category yet.</p>
       )}
 
-      <div className="space-y-5">
-        {data?.map((product, i) => (
-          <ProductSection key={product.id} product={product} accentIndex={i} />
+      <div className="space-y-6">
+        {data?.map((product) => (
+          <ProductSection key={product.id} product={product} />
         ))}
       </div>
     </main>
