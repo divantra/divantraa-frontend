@@ -28,11 +28,11 @@ export default function ProductVariantCard({
     <Link
       href={`/products/${product.slug}`}
       data-variant-card
-      className="group relative flex w-[155px] sm:w-[190px] shrink-0 snap-start flex-col overflow-hidden rounded-2xl border border-ink/8 bg-white shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
+      className="group relative flex w-[175px] sm:w-[220px] lg:w-[250px] shrink-0 snap-start flex-col overflow-hidden rounded-2xl border border-ink/8 bg-white shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
     >
       <div className="relative aspect-square w-full bg-cream overflow-hidden">
         {image ? (
-          <Image src={image} alt={variant.title} fill sizes="(max-width: 640px) 155px, 190px" className="object-cover transition-transform duration-300 group-hover:scale-[1.03]" />
+          <Image src={image} alt={variant.title} fill sizes="(max-width: 640px) 175px, (max-width: 1024px) 220px, 250px" className="object-cover transition-transform duration-300 group-hover:scale-[1.03]" />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-xs text-ink/30">No image</div>
         )}
@@ -59,9 +59,9 @@ export default function ProductVariantCard({
       <div className="flex flex-1 flex-col px-3 pb-3 pt-2.5">
         <p className="text-xs font-medium text-ink/70 leading-snug line-clamp-2">{product.title} – {variant.title}</p>
 
-        {typeof product.avgRating === "number" && (product.reviewCount ?? 0) > 0 && (
+        {typeof variant.avgRating === "number" && (variant.reviewCount ?? 0) > 0 && (
           <span className="mt-0.5 flex items-center gap-1 text-[10px] text-ink/50">
-            <Star size={10} className="fill-gold text-gold" /> {product.avgRating.toFixed(1)} ({product.reviewCount})
+            <Star size={10} className="fill-gold text-gold" /> {variant.avgRating.toFixed(1)} ({variant.reviewCount})
           </span>
         )}
 
