@@ -17,7 +17,7 @@ export default function WelcomeBanner() {
       </p>
 
       <p className="mt-4 text-sm text-ink/60 sm:text-base">
-        We bring you traditionally crafted ghee, wood-pressed oils and raw forest honey —
+        We bring you traditionally crafted spices, wood-pressed oils and raw forest honey —
         made the way nature intended, and delivered straight to your home.
       </p>
     </div>
