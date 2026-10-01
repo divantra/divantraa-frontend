@@ -74,7 +74,7 @@ export default function ProductVariantCard({
         {best !== null && (
           <div className="mt-1.5 flex items-center gap-1 rounded-lg bg-leaf/10 px-1.5 py-1">
             <span className="text-[10px]">🏷️</span>
-            <span className="text-[10px] font-semibold text-forest truncate">Best ₹{best} w/ {promo!.promoCode}</span>
+            <span className="text-[10px] font-semibold text-forest truncate">Unlock ₹{best} with {promo!.promoCode}</span>
           </div>
         )}
 
