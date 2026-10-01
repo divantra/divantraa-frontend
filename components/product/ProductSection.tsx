@@ -55,7 +55,7 @@ export default function ProductSection({ product, accentIndex }: { product: Prod
 
       <div className="flex gap-3 overflow-x-auto pb-1 snap-x snap-mandatory" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
         {variants.map((v) => (
-          <ProductVariantCard key={v.id} product={product} variant={v} />
+          <ProductVariantCard key={v.id} product={product} variant={v} onOpenPicker={() => setPickerOpen(true)} />
         ))}
       </div>
 

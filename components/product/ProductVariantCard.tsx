@@ -1,11 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Minus, Plus, ShoppingCart, Circle } from "lucide-react";
-import { useCartStore } from "@/store/useCartStore";
-import { useUiStore } from "@/store/useUiStore";
+import { ShoppingCart } from "lucide-react";
 import { getVariantImages, getUnitPriceLabel, getDiscountPercent } from "@/types/product";
 import type { Product, ProductVariant } from "@/types/product";
 
@@ -13,34 +10,21 @@ import type { Product, ProductVariant } from "@/types/product";
 const PROMO_CODE = "PURE15";
 const PROMO_PERCENT = 0.15;
 
-/** One variant shown as its own card — used inside a horizontally-scrollable product section. */
-export default function ProductVariantCard({ product, variant }: { product: Product; variant: ProductVariant }) {
-  const [isClient, setIsClient] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const { addItem, updateQuantity, getItemQuantity } = useCartStore();
-  useEffect(() => setIsClient(true), []);
-
-  const cartQuantity = isClient ? getItemQuantity(variant.id) : 0;
+/**
+ * One variant shown as its own card — pure display (image, price, best price). It never adds to
+ * cart or shows a quantity stepper directly; the cart icon always opens the variant picker popup
+ * for the parent product, where the actual add/quantity controls live.
+ */
+export default function ProductVariantCard({
+  product, variant, onOpenPicker,
+}: {
+  product: Product; variant: ProductVariant; onOpenPicker: () => void;
+}) {
   const image = getVariantImages(variant, product)[0] ?? "";
   const unitLabel = getUnitPriceLabel(variant);
   const off = getDiscountPercent(variant);
   const bestPrice = Math.round(Number(variant.price) * (1 - PROMO_PERCENT));
   const soldOut = variant.trackInventory && variant.stock === 0;
-
-  const handleAdd = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      addItem({
-        productId: product.id, variantId: variant.id, title: product.title,
-        variantTitle: variant.title, slug: product.slug, price: Number(variant.price),
-        compareAtPrice: variant.compareAtPrice ?? undefined, image,
-      }, 1);
-      useUiStore.getState().openAddOns(product.id);
-    }, 250);
-  };
 
   return (
     <Link
@@ -73,23 +57,13 @@ export default function ProductVariantCard({ product, variant }: { product: Prod
         <div className="mt-2">
           {soldOut ? (
             <span className="block text-center text-[11px] font-medium text-red-500 py-1.5">Out of stock</span>
-          ) : cartQuantity > 0 ? (
-            <div className="flex h-8 items-center justify-between overflow-hidden rounded-full bg-forest shadow-sm">
-              <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); updateQuantity(variant.id, cartQuantity - 1); }} className="flex h-full w-7 items-center justify-center text-white hover:bg-white/10" aria-label="Decrease quantity">
-                <Minus size={12} strokeWidth={2.5} />
-              </button>
-              <span className="text-xs font-bold text-white">{cartQuantity}</span>
-              <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); updateQuantity(variant.id, cartQuantity + 1); }} className="flex h-full w-7 items-center justify-center text-white hover:bg-white/10" aria-label="Increase quantity">
-                <Plus size={12} strokeWidth={2.5} />
-              </button>
-            </div>
           ) : (
             <button
-              onClick={handleAdd}
-              disabled={loading}
-              className="flex h-8 w-full items-center justify-center gap-1.5 rounded-full bg-forest text-[11px] font-semibold text-white shadow-sm transition-colors hover:bg-leaf disabled:opacity-60"
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); onOpenPicker(); }}
+              aria-label={`Choose a size of ${product.title}`}
+              className="flex h-8 w-full items-center justify-center gap-1.5 rounded-full bg-forest text-white shadow-sm transition-colors hover:bg-leaf"
             >
-              {loading ? <Circle className="h-3.5 w-3.5 animate-spin" /> : <>ADD <ShoppingCart size={13} /></>}
+              <ShoppingCart size={15} />
             </button>
           )}
         </div>

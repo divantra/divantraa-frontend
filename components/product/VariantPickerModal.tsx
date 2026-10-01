@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import { X, ShoppingCart, Minus, Plus, Circle } from "lucide-react";
 import { useCartStore } from "@/store/useCartStore";
+import { useUiStore } from "@/store/useUiStore";
 import { getVariantImages, getUnitPriceLabel } from "@/types/product";
 import type { Product, ProductVariant } from "@/types/product";
 
@@ -67,6 +68,7 @@ function VariantRow({ product, variant }: { product: Product; variant: ProductVa
         variantTitle: variant.title, slug: product.slug, price: Number(variant.price),
         compareAtPrice: variant.compareAtPrice ?? undefined, image,
       }, 1);
+      useUiStore.getState().openAddOns(product.id);
     }, 250);
   };
 
