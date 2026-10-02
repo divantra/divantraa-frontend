@@ -15,8 +15,6 @@ export default function ProductSection({ product }: { product: Product }) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const { data: promo } = usePromoConfig();
   const variants = [...product.variants].filter((v) => v.isActive).sort((a, b) => a.sortOrder - b.sortOrder);
-  if (variants.length === 0) return null;
-  const bannerImage = getVariantImages(variants[0], product)[0] ?? product.images[0] ?? "";
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -34,6 +32,9 @@ export default function ProductSection({ product }: { product: Product }) {
   function scrollByCards(direction: 1 | -1) {
     scrollRef.current?.scrollBy({ left: direction * scrollRef.current.clientWidth * 0.85, behavior: "smooth" });
   }
+
+  if (variants.length === 0) return null;
+  const bannerImage = getVariantImages(variants[0], product)[0] ?? product.images[0] ?? "";
 
   return (
     <section>
