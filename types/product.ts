@@ -39,6 +39,8 @@ export interface ProductVariant {
   sortOrder:      number;
   isDefault:      boolean;
   isActive:       boolean;
+  avgRating?:     number | null;    // list responses only — real if the product has reviews, else a placeholder
+  reviewCount?:   number;
 }
 
 // ── Product — the listing ──────────────────────────────────────

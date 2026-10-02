@@ -72,10 +72,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
         />
         <Providers>
-          <PromoBar />
-          <Suspense fallback={<div className="sticky top-0 z-50 h-[108px] bg-white shadow-sm" />}>
-            <SiteHeader />
-          </Suspense>
+          <div className="sticky top-0 z-50">
+            <PromoBar />
+            <Suspense fallback={<div className="h-[108px] bg-white shadow-sm" />}>
+              <SiteHeader />
+            </Suspense>
+          </div>
           <ClientLayoutWrapper>{children}</ClientLayoutWrapper>
           <CartDrawer />
           <AddOnsDrawer />

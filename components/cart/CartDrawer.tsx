@@ -193,8 +193,8 @@ export function CartDrawer() {
                               <div className="flex w-fit items-center rounded-full border border-ink/15">
                                 <button
                                   className="p-2 text-ink/60 hover:text-ink"
-                                  onClick={() => handleUpdateQty(item.variantId, Math.max(1, item.quantity - 1))}
-                                  aria-label="Decrease quantity"
+                                  onClick={() => handleUpdateQty(item.variantId, item.quantity - 1)}
+                                  aria-label={item.quantity <= 1 ? "Remove" : "Decrease quantity"}
                                 >
                                   <Minus size={14} />
                                 </button>

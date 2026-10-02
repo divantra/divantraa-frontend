@@ -107,9 +107,10 @@ function VariantRow({ product, variant, promo }: { product: Product; variant: Pr
         <button
           onClick={handleAdd}
           disabled={loading}
-          className="shrink-0 h-9 min-w-[72px] rounded-full bg-forest px-3.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-leaf disabled:opacity-60"
+          aria-label={`Add ${variant.title} to cart`}
+          className="flex shrink-0 h-9 w-9 items-center justify-center rounded-full bg-forest text-white shadow-sm transition-colors hover:bg-leaf disabled:opacity-60"
         >
-          {loading ? <Circle className="h-3.5 w-3.5 animate-spin mx-auto text-white" /> : "ADD"}
+          {loading ? <Circle className="h-3.5 w-3.5 animate-spin text-white" /> : <ShoppingCart size={15} />}
         </button>
       )}
     </div>
