@@ -23,14 +23,20 @@ const LOGO_WORDMARK = "/logo-wordmark-header.png"; // 560×96 — "DIVANTRAA" on
 
 /** Mark + wordmark side by side. `size="sm"` for the mobile bars, `size="md"` for desktop. */
 function LogoLockup({ size = "md" }: { size?: "md" | "sm" }) {
-  const markH = size === "md" ? 52 : 44;
+  const markH = size === "md" ? 60 : 48;
   const markW = Math.round(markH * (242 / 240));
-  const wordH = size === "md" ? 30 : 29;
+  const wordH = size === "md" ? 34 : 31;
   const wordW = Math.round(wordH * (560 / 96));
   return (
     <span className="flex items-center gap-2">
       <Image src={LOGO_MARK} alt="" width={markW} height={markH} priority />
-      <Image src={LOGO_WORDMARK} alt="Divantraa" width={wordW} height={wordH} priority />
+      <span className="relative overflow-hidden">
+        <Image src={LOGO_WORDMARK} alt="Divantraa" width={wordW} height={wordH} priority />
+        <span
+          aria-hidden
+          className="animate-logo-shine pointer-events-none absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-gold/80 to-transparent"
+        />
+      </span>
     </span>
   );
 }

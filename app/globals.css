@@ -11,6 +11,15 @@
   animation: pulse-glow 2s ease-in-out infinite;
 }
 
+/* A diagonal gold streak that sweeps across the header logo on a loop. */
+@keyframes logo-shine {
+  0%   { transform: translateX(-150%) skewX(-20deg); }
+  35%, 100% { transform: translateX(250%) skewX(-20deg); }
+}
+.animate-logo-shine {
+  animation: logo-shine 1.8s ease-in-out infinite;
+}
+
 /* ── Design token layer (Anveshan-aligned) ─────────────────── */
 :root {
   --color-forest:  #00584B;
