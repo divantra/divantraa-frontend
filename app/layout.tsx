@@ -11,6 +11,7 @@ import { LoginModal } from "@/components/auth/LoginModal";
 import { CartDrawer } from "@/components/cart/CartDrawer";
 import { AddOnsDrawer } from "@/components/cart/AddOnsDrawer";
 import ClientLayoutWrapper from "@/components/layout/ClientLayoutWrapper";
+import { WhatsAppWidget } from "@/components/layout/WhatsAppWidget";
 
 const figtree = Figtree({
   subsets: ["latin"],
@@ -83,6 +84,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <AddOnsDrawer />
           <LoginModal />
           <SiteFooter />
+          <WhatsAppWidget />
         </Providers>
       </body>
     </html>
