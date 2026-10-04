@@ -101,10 +101,17 @@ textarea {
 }
 
 /* ── Scrollbar ─────────────────────────────────────────────── */
-::-webkit-scrollbar       { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(36,36,36,0.15); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(36,36,36,0.3); }
+/* Chrome/Edge/Safari: rounded forest thumb, no arrow buttons */
+::-webkit-scrollbar        { width: 8px; height: 8px; }
+::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
+::-webkit-scrollbar-track  { background: #F5F0E8; }
+::-webkit-scrollbar-thumb  { background: #00584B; border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background: #007A6B; }
+
+/* Firefox only — in Chrome 121+ scrollbar-color would override the rules above and bring the arrows back */
+@supports (-moz-appearance: none) {
+  html { scrollbar-color: #00584B #F5F0E8; scrollbar-width: thin; }
+}
 
 ::selection {
   background-color: #007A6B;

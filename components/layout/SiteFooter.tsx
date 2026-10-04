@@ -10,10 +10,10 @@ import {
   X,
 } from "lucide-react";
 
-import { CartFooterBar } from "../cart/CartFooterBar";
 import { getImageUrl } from "@/lib/image.utils";
 import { api } from "@/lib/api";
 import { getAxiosErrorMessage } from "@/lib/errorUtils";
+import { CartFooterBar } from "@/components/cart/CartFooterBar";
 
 const FOOTER_BG = getImageUrl("public/divantraa-footer-background-image.webp");
 
@@ -81,13 +81,17 @@ export function SiteFooter() {
         {/* =====================================================
             FOOTER CONTENT
         ====================================================== */}
-        <div className="relative z-10 px-[20px] pt-[30px] pb-[25px]">
+        <div className="relative z-10 px-5 pt-8 pb-6 sm:px-8 md:px-10 lg:px-[20px] lg:pt-[30px] lg:pb-[25px]">
 
           <div
             className="
               grid
-              grid-cols-[3.8fr_1.9fr_1.9fr_0.6fr]
-              gap-[40px]
+              grid-cols-1
+              sm:grid-cols-2
+              lg:grid-cols-[3.8fr_1.9fr_1.9fr_0.6fr]
+              gap-y-10
+              gap-x-8
+              lg:gap-[40px]
               mb-4
             "
           >
@@ -95,10 +99,10 @@ export function SiteFooter() {
             {/* =================================================
                 LEFT
             ================================================= */}
-            <div>
+            <div className="sm:col-span-2 lg:col-span-1">
 
               {/* ADDRESS */}
-              <div className="text-[16px] leading-[1.55] text-white/85">
+              <div className="text-sm sm:text-base lg:text-[16px] leading-[1.55] text-white/85">
 
                 <p>
                   <span className="font-bold text-white">
@@ -109,7 +113,7 @@ export function SiteFooter() {
                   Bangalore 560040
                 </p>
 
-                <p className="mt-[18px]">
+                <p className="mt-4 lg:mt-[18px]">
                   <span className="font-bold text-white">
                     Registered Office -
                   </span>{" "}
@@ -121,7 +125,7 @@ export function SiteFooter() {
               </div>
 
               {/* GRIEVANCE */}
-              <p className="mt-[48px] text-[16px] leading-[1.5] text-white/85">
+              <p className="mt-8 lg:mt-[48px] text-sm sm:text-base lg:text-[16px] leading-[1.5] text-white/85">
                 Grievance Redressal Officer:{" "}
                 <Link
                   href="/contact"
@@ -132,14 +136,14 @@ export function SiteFooter() {
               </p>
 
               {/* NEWSLETTER */}
-              <div className="mt-[48px] max-w-[625px]">
-                <h4 className="mb-[15px] text-[17px] font-bold uppercase text-white">
+              <div className="mt-8 lg:mt-[48px] w-full lg:max-w-[625px]">
+                <h4 className="mb-3 lg:mb-[15px] text-sm sm:text-base lg:text-[17px] font-bold uppercase text-white">
                   SUBSCRIBE TO OUR NEWSLETTER
                 </h4>
 
                 <form
                   onSubmit={handleSubscribe}
-                  className="flex h-[64px] w-full border border-white/55"
+                  className="flex h-12 sm:h-14 lg:h-[64px] w-full border border-white/55"
                 >
                   <input
                     type="email"
@@ -150,8 +154,12 @@ export function SiteFooter() {
                       min-w-0
                       flex-1
                       bg-transparent
-                      px-[34px]
-                      text-[16px]
+                      px-4
+                      sm:px-6
+                      lg:px-[34px]
+                      text-sm
+                      sm:text-base
+                      lg:text-[16px]
                       text-white
                       outline-none
                       placeholder:text-white/75
@@ -163,8 +171,12 @@ export function SiteFooter() {
                     aria-label="Subscribe"
                     disabled={subscribing}
                     className="
-                      w-[70px]
-                      text-[28px]
+                      w-12
+                      sm:w-14
+                      lg:w-[70px]
+                      text-xl
+                      sm:text-2xl
+                      lg:text-[28px]
                       text-white
                       hover:text-[#dfc77f]
                       disabled:opacity-50
@@ -193,17 +205,18 @@ export function SiteFooter() {
             ================================================= */}
             <div>
 
-              <h4 className="mb-[28px] text-[18px] font-bold text-[#dfc77f]">
+              <h4 className="mb-4 lg:mb-[28px] text-base sm:text-[18px] font-bold text-[#dfc77f]">
                 SERVICES
               </h4>
 
-              <ul className="space-y-[12px]">
+              <ul className="space-y-3 lg:space-y-[12px]">
                 {serviceLinks.map((link) => (
                   <li key={link.label}>
                     <Link
                       href={link.href}
                       className="
-                        text-[16px]
+                        text-sm
+                        sm:text-[16px]
                         leading-none
                         text-white/85
                         transition
@@ -223,17 +236,18 @@ export function SiteFooter() {
             ================================================= */}
             <div>
 
-              <h4 className="mb-[28px] text-[18px] font-bold text-[#dfc77f]">
+              <h4 className="mb-4 lg:mb-[28px] text-base sm:text-[18px] font-bold text-[#dfc77f]">
                 POLICIES
               </h4>
 
-              <ul className="space-y-[12px]">
+              <ul className="space-y-3 lg:space-y-[12px]">
                 {policyLinks.map((link) => (
                   <li key={link.label}>
                     <Link
                       href={link.href}
                       className="
-                        text-[16px]
+                        text-sm
+                        sm:text-[16px]
                         leading-[1.35]
                         text-white/85
                         transition
@@ -251,9 +265,9 @@ export function SiteFooter() {
             {/* =================================================
                 NEED HELP
             ================================================= */}
-            <div>
+            <div className="sm:col-span-2 lg:col-span-1">
 
-              <h4 className="mb-[20px] text-[18px] font-bold text-[#dfc77f]">
+              <h4 className="mb-4 lg:mb-[20px] text-base sm:text-[18px] font-bold text-[#dfc77f]">
                 NEED HELP?
               </h4>
 
@@ -262,13 +276,19 @@ export function SiteFooter() {
                 href="/contact"
                 className="
                   flex
-                  h-[62px]
+                  h-12
+                  sm:h-14
+                  lg:h-[62px]
                   w-full
+                  sm:w-auto
+                  lg:w-full
                   items-center
                   justify-center
                   rounded-full
                   bg-[#dfc77f]
-                  text-[17px]
+                  px-8
+                  text-base
+                  lg:text-[17px]
                   font-medium
                   text-[#00665c]
                   transition
@@ -279,7 +299,7 @@ export function SiteFooter() {
               </Link>
 
               {/* SOCIAL */}
-              <div className="mt-[25px] flex gap-[20px]">
+              <div className="mt-5 lg:mt-[25px] flex gap-3 sm:gap-4 lg:gap-[20px]">
 
                 <a
                   href="https://facebook.com"
@@ -288,8 +308,12 @@ export function SiteFooter() {
                   aria-label="Facebook"
                   className="
                     flex
-                    h-[66px]
-                    w-[66px]
+                    h-12
+                    w-12
+                    sm:h-14
+                    sm:w-14
+                    lg:h-[66px]
+                    lg:w-[66px]
                     items-center
                     justify-center
                     rounded-full
@@ -297,7 +321,7 @@ export function SiteFooter() {
                     text-[#00665c]
                   "
                 >
-                  <Facebook size={25} strokeWidth={2.2} />
+                  <Facebook className="h-5 w-5 sm:h-6 sm:w-6" strokeWidth={2.2} />
                 </a>
 
                 <a
@@ -307,8 +331,12 @@ export function SiteFooter() {
                   aria-label="Instagram"
                   className="
                     flex
-                    h-[66px]
-                    w-[66px]
+                    h-12
+                    w-12
+                    sm:h-14
+                    sm:w-14
+                    lg:h-[66px]
+                    lg:w-[66px]
                     items-center
                     justify-center
                     rounded-full
@@ -316,7 +344,7 @@ export function SiteFooter() {
                     text-[#00665c]
                   "
                 >
-                  <Instagram size={25} strokeWidth={2.2} />
+                  <Instagram className="h-5 w-5 sm:h-6 sm:w-6" strokeWidth={2.2} />
                 </a>
 
                 <a
@@ -324,8 +352,12 @@ export function SiteFooter() {
                   aria-label="Email"
                   className="
                     flex
-                    h-[66px]
-                    w-[66px]
+                    h-12
+                    w-12
+                    sm:h-14
+                    sm:w-14
+                    lg:h-[66px]
+                    lg:w-[66px]
                     items-center
                     justify-center
                     rounded-full
@@ -333,7 +365,7 @@ export function SiteFooter() {
                     text-[#00665c]
                   "
                 >
-                  <Mail size={25} strokeWidth={2.2} />
+                  <Mail className="h-5 w-5 sm:h-6 sm:w-6" strokeWidth={2.2} />
                 </a>
 
                 <a
@@ -343,8 +375,12 @@ export function SiteFooter() {
                   aria-label="X"
                   className="
                     flex
-                    h-[66px]
-                    w-[66px]
+                    h-12
+                    w-12
+                    sm:h-14
+                    sm:w-14
+                    lg:h-[66px]
+                    lg:w-[66px]
                     items-center
                     justify-center
                     rounded-full
@@ -352,7 +388,7 @@ export function SiteFooter() {
                     text-[#00665c]
                   "
                 >
-                  <X size={25} strokeWidth={2.2} />
+                  <X className="h-5 w-5 sm:h-6 sm:w-6" strokeWidth={2.2} />
                 </a>
 
               </div>
@@ -362,7 +398,7 @@ export function SiteFooter() {
           </div>
 
           {/* COPYRIGHT */}
-          <div className="border-t border-white/10 pt-4 text-center text-[14px] text-white/75">
+          <div className="border-t border-white/10 pt-4 text-center text-xs sm:text-sm lg:text-[14px] text-white/75">
             Copyright © {new Date().getFullYear()}, Divantraa. All rights reserved.
           </div>
         </div>

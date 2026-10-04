@@ -6,7 +6,7 @@ import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  ShoppingCart, CircleUser, Menu, X, Search,
+  CircleUser, Menu, X, Search,
   ShieldCheck, LogOut, Package, User,
   LayoutGrid, Info, PhoneCall, ChevronDown,
 } from "lucide-react";
@@ -17,7 +17,10 @@ import { useLogout } from "@/hooks/useAuth";
 import { api } from "@/lib/api";
 import type { Product } from "@/types/product";
 import { useDebounce } from "@/hooks/useDebounce";
+import { CartIcon } from "@/components/Icon/CartIcon";
+import { getImageUrl } from "@/lib/image.utils";
 
+// const LOGO_HORIZONTAL = getImageUrl("/public/logo/divantraa-horizontal-logo.png"); // 943×240 — Tight Full HD Sun mark + DIVANTRAA + Tagline "Pure Beginnings. Healthy Living."
 const LOGO_MARK = "/logo-mark.png";           // 242×240 — the sun/leaf mark
 const LOGO_WORDMARK = "/logo-wordmark-header.png"; // 560×96 — "DIVANTRAA" only (no tagline, for the compact header)
 
@@ -51,20 +54,20 @@ function LogoLockup({ size = "md" }: { size?: "md" | "sm" }) {
 }
 
 const NAV_LINKS = [
-  { href: "/products",                            label: "All Products",      icon: <LayoutGrid size={16} /> },
+  { href: "/products", label: "All Products", icon: <LayoutGrid size={16} /> },
   { href: "/products?category=wood-pressed-oils", label: "Wood Pressed Oils", icon: null },
-  { href: "/products?category=raw-wild-forest-honey", label: "Honey",        icon: null },
-  { href: "/products?category=spices",            label: "Spices",            icon: null },
-  { href: "/about",                               label: "About Us",          icon: <Info       size={16} /> },
-  { href: "/contact",                             label: "Contact Us",        icon: <PhoneCall  size={16} /> },
+  { href: "/products?category=raw-wild-forest-honey", label: "Honey", icon: null },
+  { href: "/products?category=spices", label: "Spices", icon: null },
+  { href: "/about", label: "About Us", icon: <Info size={16} /> },
+  { href: "/contact", label: "Contact Us", icon: <PhoneCall size={16} /> },
 ];
 
 export function SiteHeader() {
   const [isClient, setIsClient] = useState(false);
   useEffect(() => setIsClient(true), []);
 
-  const router      = useRouter();
-  const pathname    = usePathname();
+  const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
 
   function isNavActive(href: string, idx: number): boolean {
@@ -102,12 +105,12 @@ export function SiteHeader() {
   }
 
   // ── Search ────────────────────────────────────────────────────────────
-  const [query,            setQuery]            = useState("");
-  const [results,          setResults]          = useState<Product[]>([]);
-  const [searching,        setSearching]        = useState(false);
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<Product[]>([]);
+  const [searching, setSearching] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
-  const debouncedQuery   = useDebounce(query, 350);
-  const searchInputRef   = useRef<HTMLInputElement>(null);
+  const debouncedQuery = useDebounce(query, 350);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const searchWrapperRef = useRef<HTMLDivElement>(null);
 
   // ── Desktop user dropdown ──────────────────────────────────────────────
@@ -117,10 +120,10 @@ export function SiteHeader() {
   // ── Mobile drawer account accordion ───────────────────────────────────
   const [mobileAccountOpen, setMobileAccountOpen] = useState(false);
 
-  const user      = useAuthStore((s) => s.user);
+  const user = useAuthStore((s) => s.user);
   const { isHydrated } = useAuthStore();
   const itemCount = useCartStore((s) => s.itemCount());
-  const openCart  = useCartStore((s) => s.openCart);
+  const openCart = useCartStore((s) => s.openCart);
   const { isMobileMenuOpen, toggleMobileMenu, closeMobileMenu, openLoginModal } = useUiStore();
   const logout = useLogout();
 
@@ -313,9 +316,9 @@ export function SiteHeader() {
                         className="flex items-center gap-1.5 group"
                       >
                         <CircleUser size={24} className="text-forest group-hover:text-leaf transition-colors" />
-                        <span className="text-xs font-medium text-ink/60 group-hover:text-ink whitespace-nowrap">
+                        {/* <span className="text-xs font-medium text-ink/60 group-hover:text-ink whitespace-nowrap">
                           Sign in
-                        </span>
+                        </span> */}
                       </button>
                     )}
                   </div>
@@ -323,7 +326,7 @@ export function SiteHeader() {
 
                 <div className="relative">
                   <button onClick={openCart} aria-label="Cart">
-                    <ShoppingCart size={24} className="text-forest hover:text-leaf transition-colors" />
+                    <CartIcon className="text-forest hover:text-leaf transition-colors" />
                     {isClient && itemCount > 0 && (
                       <span className="absolute -top-2 -right-2 h-4 min-w-4 px-1 rounded-full bg-clay text-[10px] leading-4 text-white text-center">
                         {itemCount}
@@ -407,7 +410,7 @@ export function SiteHeader() {
                 aria-label="Cart"
                 className="p-1.5 rounded-lg hover:bg-ink/5 transition-colors"
               >
-                <ShoppingCart size={22} className="text-forest" />
+                <CartIcon className="text-forest" />
                 {isClient && itemCount > 0 && (
                   <span className="absolute -top-0.5 right-0 h-4 min-w-4 px-1 rounded-full bg-clay text-[10px] leading-4 text-white text-center">
                     {itemCount}
@@ -542,7 +545,7 @@ export function SiteHeader() {
 
                 <Link href="/cart" onClick={handleMobileClose}
                   className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-ink/80 hover:bg-cream hover:text-forest transition-colors">
-                  <ShoppingCart size={16} className="text-forest" />
+                  <CartIcon className="text-forest" />
                   Cart
                   {isClient && itemCount > 0 && (
                     <span className="ml-auto h-5 min-w-5 px-1.5 rounded-full bg-clay text-[10px] leading-5 text-white text-center">

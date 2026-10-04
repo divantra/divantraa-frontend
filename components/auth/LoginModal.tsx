@@ -60,6 +60,16 @@ export function LoginModal() {
     if (useCartStore.getState().items.length > 0) router.push("/checkout");
   }, [closeLoginModal, router]);
 
+  // Prevent background body scroll while modal is open
+  useEffect(() => {
+    if (!isLoginModalOpen) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [isLoginModalOpen]);
+
   const sendOtp = useSendOtp();
   const resendOtp = useResendOtp();
   const verifyOtp = useVerifyOtp();
@@ -164,49 +174,58 @@ export function LoginModal() {
           />
 
           <motion.div
-            initial={{ opacity: 0, scale: 0.96, y: 10 }}
+            initial={{ opacity: 0, scale: 0.95, y: 15 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.96, y: 10 }}
+            exit={{ opacity: 0, scale: 0.95, y: 15 }}
             transition={{ duration: 0.25, ease: "easeOut" }}
-            className="fixed inset-0 z-[61] flex items-center justify-center p-4 overflow-y-auto"
+            className="fixed inset-0 z-[61] flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
           >
-            <div className="relative w-full max-w-md my-auto">
+            {/* Outer Wrapper with headroom for top center close icon */}
+            <div className="relative w-full max-w-[380px] sm:max-w-[430px] my-auto pt-6 pb-2">
+              {/* Top-center floating circular close button (matching reference) */}
               <button
                 onClick={handleClose}
                 aria-label="Close"
-                className="absolute -top-8 left-1/2 -translate-x-1/2 z-20 h-6 w-6 rounded-full bg-white/90 flex items-center justify-center text-ink hover:bg-white"
+                className="absolute top-1 left-1/2 -translate-x-1/2 z-30 h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-white shadow-xl flex items-center justify-center text-ink/80 hover:text-ink hover:scale-105 active:scale-95 transition-all focus:outline-none"
               >
-                <X size={14} />
+                <X size={16} strokeWidth={2.5} />
               </button>
 
-              <div className="relative w-full rounded-2xl overflow-hidden bg-forest shadow-2xl">
-                {/* Full background image */}
-                <div className="absolute inset-0">
+              {/* Reduced Height Full HD Card */}
+              <div className="relative w-full min-h-[500px] sm:min-h-[520px] rounded-[24px] sm:rounded-[28px] overflow-hidden shadow-2xl flex flex-col justify-end">
+                {/* ── Full HD Background Image ── */}
+                <div className="absolute inset-0 z-0">
                   <Image
-                    src={getImageUrl('public/divantraa-logo-main.jpeg')}
-                    alt=""
+                    src={getImageUrl('public/login/Login_Modal_Bg.png')}
+                    alt="Divantraa - Pure Beginnings"
                     fill
-                    className="object-cover"
+                    quality={100}
+                    unoptimized
                     priority
+                    className="object-cover object-top select-none pointer-events-none"
                   />
-                  <div className="absolute inset-0 bg-black/30" />
+                  {/* Black overlay on image */}
+                  <div className="absolute inset-0 bg-black/40 pointer-events-none" />
                 </div>
 
-                {/* Form content — min-h is shorter on small phones */}
-                <div className="relative z-10 flex flex-col justify-end p-4 sm:p-6 min-h-[420px] sm:min-h-[520px]">
-                  <div className="bg-white rounded-xl p-5 sm:p-8 shadow-lg">
+                {/* ── Bottom Form Area (firmly pinned to bottom) ── */}
+                <div className="relative z-10 p-3 sm:p-4 mt-auto w-full">
+                  <div className="w-full rounded-2xl bg-white/95 backdrop-blur-sm shadow-2xl p-5 sm:p-6 border border-ink/5">
                     {loginNotice && (
-                      <p role="status" className="mb-4 rounded-lg bg-amber-50 px-3 py-2 text-center text-sm text-amber-800">
+                      <p role="status" className="mb-4 rounded-lg bg-amber-50 px-3 py-2 text-center text-xs text-amber-800">
                         {loginNotice}
                       </p>
                     )}
 
-                    {/* ── Phone step ── */}
+                    {/* ── Step: Phone ── */}
                     {step === "phone" && (
                       <>
-                        <h2 className="text-center font-display text-2xl text-ink mb-6">Sign In</h2>
-                        <div className="flex items-stretch rounded-lg border border-ink/15 overflow-hidden">
-                          <span className="flex items-center gap-1 px-3 bg-cream text-sm text-ink/70 border-r border-ink/15">
+                        <h2 className="text-center font-display text-xl sm:text-2xl font-bold text-ink mb-5 sm:mb-6">
+                          Sign In
+                        </h2>
+
+                        <div className="flex items-stretch rounded-xl border border-ink/20 focus-within:border-forest focus-within:ring-1 focus-within:ring-forest overflow-hidden transition-all bg-white">
+                          <span className="flex items-center gap-1.5 px-3 bg-white text-sm font-medium text-ink border-r border-ink/15 shrink-0 select-none">
                             🇮🇳 +91
                           </span>
                           <input
@@ -230,37 +249,57 @@ export function LoginModal() {
                                 }, 0);
                               }
                             }}
-                            className="flex-1 px-3 py-3 text-sm outline-none min-w-0"
+                            className="flex-1 px-3 py-3 text-sm text-ink placeholder:text-ink/40 outline-none bg-transparent min-w-0 font-normal"
                           />
                           <button
                             onClick={triggerSendOtp}
                             disabled={!isPhoneValid || sendOtp.isPending}
-                            className="px-6 bg-forest text-white text-sm font-medium disabled:opacity-40 hover:opacity-90 transition-opacity shrink-0"
+                            className="px-5 sm:px-6 bg-[#004e42] hover:bg-[#003d34] text-white text-sm font-semibold disabled:opacity-40 hover:opacity-95 transition-all shrink-0 flex items-center justify-center"
                           >
                             {sendOtp.isPending ? "…" : "Login"}
                           </button>
                         </div>
+
                         {sendOtp.isError && (
                           <p className="mt-2 text-xs text-red-500">
                             {getAxiosErrorMessage(sendOtp.error, "Couldn't send OTP. Try again.")}
                           </p>
                         )}
-                        <p className="mt-4 flex items-start gap-1.5 text-xs text-ink/50 leading-relaxed">
-                          <span>ⓘ</span>
+
+                        <p className="mt-4 flex items-start gap-1.5 text-[11px] sm:text-xs text-ink/60 leading-relaxed">
+                          <span className="text-xs font-semibold leading-none mt-0.5">ⓘ</span>
                           <span>
                             By proceeding, you are agreeing to our{" "}
-                            <a href="https://divantraa.com/policies/terms" target="_blank" rel="noopener noreferrer" className="underline">T&amp;C</a> and{" "}
-                            <a href="https://divantraa.com/policies/privacy" target="_blank" rel="noopener noreferrer" className="underline">Privacy Policy</a>.
+                            <a
+                              href="/policies/terms"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="font-semibold underline text-ink/75 hover:text-forest"
+                            >
+                              T&amp;C
+                            </a>{" "}
+                            and{" "}
+                            <a
+                              href="/policies/privacy"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="font-semibold underline text-ink/75 hover:text-forest"
+                            >
+                              Privacy Policy
+                            </a>
+                            .
                           </span>
                         </p>
                       </>
                     )}
 
-                    {/* ── OTP step ── */}
+                    {/* ── Step: OTP ── */}
                     {step === "otp" && (
                       <>
-                        <h2 className="text-center font-display text-2xl text-ink mb-1">Enter OTP</h2>
-                        <p className="text-center text-sm text-ink/50 mb-1">
+                        <h2 className="text-center font-display text-xl sm:text-2xl font-bold text-ink mb-1">
+                          Enter OTP
+                        </h2>
+                        <p className="text-center text-xs sm:text-sm text-ink/60 mb-1">
                           Sent to +91 {phone}
                         </p>
                         <button
@@ -269,12 +308,12 @@ export function LoginModal() {
                             setDigits(Array(OTP_LENGTH).fill(""));
                             setBlockError(null);
                           }}
-                          className="block mx-auto text-xs text-leaf font-medium mb-5 hover:underline"
+                          className="block mx-auto text-xs text-leaf font-medium mb-4 hover:underline"
                         >
                           Edit number
                         </button>
 
-                        <div className="flex justify-center gap-2 mb-3">
+                        <div className="flex justify-center gap-1.5 sm:gap-2 mb-3">
                           {digits.map((digit, i) => (
                             <input
                               key={i}
@@ -290,26 +329,25 @@ export function LoginModal() {
                                   document.getElementById(`modal-otp-${i - 1}`)?.focus();
                                 }
                               }}
-                              className={`h-12 w-10 rounded-lg border-2 text-center text-lg font-semibold outline-none transition-colors ${
-                                (verifyOtp.isError || blockError)
-                                  ? "border-red-400"
-                                  : digit ? "border-leaf" : "border-ink/15 focus:border-leaf"
-                              }`}
+                              className={`h-11 w-9 sm:h-12 sm:w-10 rounded-lg border-2 text-center text-lg font-semibold outline-none transition-colors ${verifyOtp.isError || blockError
+                                ? "border-red-400"
+                                : digit
+                                  ? "border-leaf"
+                                  : "border-ink/15 focus:border-leaf"
+                                }`}
                             />
                           ))}
                         </div>
 
-                        <div className="text-center text-xs min-h-5 mb-3">
+                        <div className="text-center text-xs min-h-5 mb-2">
                           {verifyOtp.isPending && <span className="text-leaf">Verifying…</span>}
-                          {blockError && (
-                            <span className="text-red-500">{blockError}</span>
-                          )}
+                          {blockError && <span className="text-red-500">{blockError}</span>}
                           {verifyOtp.isError && !blockError && (
                             <span className="text-red-500">Incorrect code, try again</span>
                           )}
                         </div>
 
-                        {/* Resend */}
+                        {/* Resend Timer */}
                         <div className="text-center text-xs text-ink/60">
                           {resendTimerActive ? (
                             <span>Resend in 0:{secondsLeft.toString().padStart(2, "0")}</span>
@@ -332,15 +370,22 @@ export function LoginModal() {
                       </>
                     )}
 
-                    {/* ── Profile step (new users only) ── */}
+                    {/* ── Step: Profile (new users only) ── */}
                     {step === "profile" && <ProfileStep onComplete={() => setStep("done")} />}
 
-                    {/* ── Done — continue to checkout (cart) or close ── */}
+                    {/* ── Step: Done ── */}
                     {step === "done" && (
                       <AutoRedirectDone onClose={handleDone} toCheckout={hasCartItems} />
                     )}
                   </div>
-                  <p className="text-center text-xs text-white/60 pt-4">Divantraa — Farm to Home</p>
+
+                  {/* ── Footer Branding (over bottom grass, matching reference) ── */}
+                  <div className="mt-3 text-center">
+                    <p className="text-[11px] font-medium text-white/90 drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)] tracking-wide flex items-center justify-center gap-1.5">
+                      <span>Powered by</span>
+                      <span className="font-semibold text-white">Divantraa</span>
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>

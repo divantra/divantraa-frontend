@@ -1,9 +1,11 @@
-import ContactUs from '@/components/contact';
+import type { Metadata } from "next";
+import ContactUs from "@/components/contact";
 
-const Contact = () => {
-  return (
-    <ContactUs />
-  );
+export const metadata: Metadata = {
+  title: "Contact Us",
+  description: "Get in touch with Divantraa for orders, farm traceability, and customer inquiries.",
 };
 
-export default Contact;
+export default function ContactPage() {
+  return <ContactUs />;
+}

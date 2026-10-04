@@ -151,11 +151,11 @@ const ContactUs = () => {
             {/* Google Map */}
             <div className="mt-10 overflow-hidden rounded-lg shadow-sm">
               <iframe
-                title="Google Maps"
-                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3888.972877233429!2d77.59456231534266!3d12.9715988908579!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3bae1670e1f5b123%3A0x1234567890abcdef!2sBangalore!5e0!3m2!1sen!2sin!4v0000000000000"
-                allowFullScreen
+                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3888.172712494123!2d77.53771239999999!3d12.960797699999999!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3bae3f0003d4d1ab%3A0x12cc51c158aeb4de!2sDivantraa%20Products!5e0!3m2!1sen!2sin!4v1791096516176!5m2!1sen!2sin"
+                className="w-full h-80 border-0"
                 loading="lazy"
-                className="h-64 w-full border-0"
+                allowFullScreen
+                referrerPolicy="no-referrer-when-downgrade"
               />
             </div>
           </div>

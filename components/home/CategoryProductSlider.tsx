@@ -21,8 +21,6 @@ import {
   ShoppingCart,
   Minus,
   Plus,
-  ChevronLeft,
-  ChevronRight,
 } from "lucide-react";
 
 import { api } from "@/lib/api";
@@ -111,11 +109,14 @@ export function CategoryProductSlider() {
   const sliderRef =
     useRef<HTMLDivElement>(null);
 
-  const [canPrev, setCanPrev] =
-    useState(false);
+  const [scrollProgress, setScrollProgress] =
+    useState(0);
 
-  const [canNext, setCanNext] =
-    useState(false);
+  const [thumbWidthPercent, setThumbWidthPercent] =
+    useState(25);
+
+  const trackRef =
+    useRef<HTMLDivElement>(null);
 
   /* ============================================================
      CATEGORIES
@@ -181,9 +182,9 @@ export function CategoryProductSlider() {
             params: {
               ...(activeSlug
                 ? {
-                    category:
-                      activeSlug,
-                  }
+                  category:
+                    activeSlug,
+                }
                 : {}),
 
               limit: 50,
@@ -228,38 +229,34 @@ export function CategoryProductSlider() {
       );
 
   /* ============================================================
-     UPDATE SLIDER BUTTON STATE
+     UPDATE SCROLL PROGRESS
      ============================================================ */
 
-  const updateSliderButtons =
-    () => {
-      const slider =
-        sliderRef.current;
+  const updateScrollProgress = () => {
+    const slider = sliderRef.current;
+    if (!slider) return;
 
-      if (!slider) return;
+    const maxScroll = slider.scrollWidth - slider.clientWidth;
+    if (maxScroll <= 0) {
+      setScrollProgress(0);
+      setThumbWidthPercent(100);
+      return;
+    }
 
-      const maxScroll =
-        slider.scrollWidth -
-        slider.clientWidth;
+    const ratio = slider.clientWidth / slider.scrollWidth;
+    const calculatedThumbWidth = Math.max(15, Math.min(35, ratio * 100));
+    setThumbWidthPercent(calculatedThumbWidth);
 
-      setCanPrev(
-        slider.scrollLeft > 5
-      );
-
-      setCanNext(
-        slider.scrollLeft <
-          maxScroll - 5
-      );
-    };
+    const progress = Math.max(0, Math.min(1, slider.scrollLeft / maxScroll));
+    setScrollProgress(progress);
+  };
 
   /* ============================================================
      RESET SLIDER
      ============================================================ */
 
   useEffect(() => {
-    const slider =
-      sliderRef.current;
-
+    const slider = sliderRef.current;
     if (!slider) return;
 
     slider.scrollTo({
@@ -267,10 +264,8 @@ export function CategoryProductSlider() {
       behavior: "auto",
     });
 
-    setTimeout(
-      updateSliderButtons,
-      50
-    );
+    const timer = setTimeout(updateScrollProgress, 60);
+    return () => clearTimeout(timer);
   }, [activeSlug, products]);
 
   /* ============================================================
@@ -278,103 +273,86 @@ export function CategoryProductSlider() {
      ============================================================ */
 
   useEffect(() => {
-    const slider =
-      sliderRef.current;
-
+    const slider = sliderRef.current;
     if (!slider) return;
 
-    updateSliderButtons();
+    updateScrollProgress();
 
-    slider.addEventListener(
-      "scroll",
-      updateSliderButtons,
-      {
-        passive: true,
-      }
-    );
-
-    window.addEventListener(
-      "resize",
-      updateSliderButtons
-    );
+    slider.addEventListener("scroll", updateScrollProgress, { passive: true });
+    window.addEventListener("resize", updateScrollProgress);
 
     return () => {
-      slider.removeEventListener(
-        "scroll",
-        updateSliderButtons
-      );
-
-      window.removeEventListener(
-        "resize",
-        updateSliderButtons
-      );
+      slider.removeEventListener("scroll", updateScrollProgress);
+      window.removeEventListener("resize", updateScrollProgress);
     };
   }, [products]);
 
   /* ============================================================
-     NEXT
+     TRACK DRAG & CLICK
      ============================================================ */
 
-  const handleNext = () => {
-    const slider =
-      sliderRef.current;
+  const handleTrackMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    const track = trackRef.current;
+    const slider = sliderRef.current;
+    if (!track || !slider) return;
 
-    if (!slider) return;
+    const rect = track.getBoundingClientRect();
+    const maxScroll = slider.scrollWidth - slider.clientWidth;
 
-    const card =
-      slider.querySelector(
-        "[data-product-card]"
-      ) as HTMLElement | null;
+    const scrollToPos = (clientX: number) => {
+      const clickX = clientX - rect.left;
+      const clickRatio = Math.max(0, Math.min(1, clickX / rect.width));
+      slider.scrollLeft = clickRatio * maxScroll;
+    };
 
-    if (!card) return;
+    scrollToPos(e.clientX);
 
-    const cardWidth =
-      card.offsetWidth;
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      scrollToPos(moveEvent.clientX);
+    };
 
-    const gap = 16;
+    const onMouseUp = () => {
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+    };
 
-    /*
-      Move approximately 4 cards
-      on desktop.
-    */
-
-    slider.scrollBy({
-      left:
-        (cardWidth + gap) * 4,
-      behavior: "smooth",
-    });
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
   };
 
   /* ============================================================
-     PREVIOUS
+     MOUSE DRAG TO SCROLL (DESKTOP)
      ============================================================ */
 
-  const handlePrevious = () => {
-    const slider =
-      sliderRef.current;
+  const isDraggingRef = useRef(false);
+  const startXRef = useRef(0);
+  const scrollLeftRef = useRef(0);
+  const hasDraggedRef = useRef(false);
 
+  const handleMouseDown = (e: React.MouseEvent) => {
+    const slider = sliderRef.current;
     if (!slider) return;
+    isDraggingRef.current = true;
+    hasDraggedRef.current = false;
+    startXRef.current = e.pageX - slider.offsetLeft;
+    scrollLeftRef.current = slider.scrollLeft;
+  };
 
-    const card =
-      slider.querySelector(
-        "[data-product-card]"
-      ) as HTMLElement | null;
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDraggingRef.current) return;
+    const slider = sliderRef.current;
+    if (!slider) return;
+    e.preventDefault();
+    const x = e.pageX - slider.offsetLeft;
+    const walk = x - startXRef.current;
+    if (Math.abs(walk) > 4) {
+      hasDraggedRef.current = true;
+    }
+    slider.scrollLeft = scrollLeftRef.current - walk;
+  };
 
-    if (!card) return;
-
-    const cardWidth =
-      card.offsetWidth;
-
-    const gap = 16;
-
-    slider.scrollBy({
-      left:
-        -(
-          (cardWidth + gap) *
-          4
-        ),
-      behavior: "smooth",
-    });
+  const handleMouseUp = () => {
+    isDraggingRef.current = false;
   };
 
   /* ============================================================
@@ -478,90 +456,6 @@ export function CategoryProductSlider() {
       >
 
         {/* ======================================================
-            PREVIOUS BUTTON
-            ====================================================== */}
-
-        <button
-          type="button"
-          onClick={
-            handlePrevious
-          }
-          disabled={!canPrev}
-          aria-label="Previous products"
-          className={`
-            absolute
-            left-3
-            top-1/2
-            z-50
-            hidden
-            h-11
-            w-11
-            -translate-y-1/2
-            items-center
-            justify-center
-            rounded-full
-            border
-            border-ink/10
-            bg-white
-            shadow-lg
-            transition-all
-            lg:flex
-            ${
-              canPrev
-                ? "cursor-pointer text-forest hover:scale-105 hover:shadow-xl"
-                : "cursor-default opacity-0"
-            }
-          `}
-        >
-          <ChevronLeft
-            size={23}
-            strokeWidth={2.5}
-          />
-        </button>
-
-        {/* ======================================================
-            NEXT BUTTON
-            ====================================================== */}
-
-        <button
-          type="button"
-          onClick={
-            handleNext
-          }
-          disabled={!canNext}
-          aria-label="Next products"
-          className={`
-            absolute
-            right-3
-            top-1/2
-            z-50
-            hidden
-            h-11
-            w-11
-            -translate-y-1/2
-            items-center
-            justify-center
-            rounded-full
-            border
-            border-ink/10
-            bg-white
-            shadow-lg
-            transition-all
-            lg:flex
-            ${
-              canNext
-                ? "cursor-pointer text-forest hover:scale-105 hover:shadow-xl"
-                : "cursor-default opacity-0"
-            }
-          `}
-        >
-          <ChevronRight
-            size={23}
-            strokeWidth={2.5}
-          />
-        </button>
-
-        {/* ======================================================
             LOADING
             ====================================================== */}
 
@@ -577,11 +471,11 @@ export function CategoryProductSlider() {
             Loading products…
           </div>
         ) : products.filter(
-            (product) =>
-              getDefaultVariant(
-                product
-              )
-          ).length === 0 ? (
+          (product) =>
+            getDefaultVariant(
+              product
+            )
+        ).length === 0 ? (
 
           /* ====================================================
              EMPTY
@@ -607,6 +501,10 @@ export function CategoryProductSlider() {
 
           <div
             ref={sliderRef}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
             className="
               flex
               w-full
@@ -618,6 +516,9 @@ export function CategoryProductSlider() {
               scroll-smooth
               snap-x
               snap-mandatory
+              cursor-grab
+              active:cursor-grabbing
+              select-none
             "
             style={{
               scrollbarWidth:
@@ -663,6 +564,12 @@ export function CategoryProductSlider() {
                   <div
                     key={product.id}
                     data-product-card
+                    onClickCapture={(e) => {
+                      if (hasDraggedRef.current) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }
+                    }}
                     className="
                       group
                       relative
@@ -883,21 +790,21 @@ export function CategoryProductSlider() {
                           variant.options
                         ).length >
                           0 && (
-                          <p
-                            className="
+                            <p
+                              className="
                               mt-1
                               truncate
                               text-[11px]
                               text-ink/40
                             "
-                          >
-                            {Object.values(
-                              variant.options
-                            ).join(
-                              " · "
-                            )}
-                          </p>
-                        )}
+                            >
+                              {Object.values(
+                                variant.options
+                              ).join(
+                                " · "
+                              )}
+                            </p>
+                          )}
 
                         {/* RATING */}
 
@@ -989,8 +896,8 @@ export function CategoryProductSlider() {
                         {/* OFFER */}
 
                         {bestPrice(Number(variant.price), promo) !== null && (
-                        <div
-                          className="
+                          <div
+                            className="
                             mt-3
                             flex
                             min-h-[34px]
@@ -1001,51 +908,51 @@ export function CategoryProductSlider() {
                             px-2
                             py-1.5
                           "
-                        >
+                          >
 
-                          <span
-                            className="
+                            <span
+                              className="
                               text-[12px]
                             "
-                          >
-                            🏷️
-                          </span>
+                            >
+                              🏷️
+                            </span>
 
-                          <span
-                            className="
+                            <span
+                              className="
                               text-[10px]
                               font-bold
                               text-forest
                               sm:text-[11px]
                             "
-                          >
-                            Best Price
-                          </span>
+                            >
+                              Best Price
+                            </span>
 
-                          <span
-                            className="
+                            <span
+                              className="
                               text-[10px]
                               font-semibold
                               text-forest
                               sm:text-[11px]
                             "
-                          >
-                            ₹
-                            {bestPrice(Number(variant.price), promo)}
-                          </span>
+                            >
+                              ₹
+                              {bestPrice(Number(variant.price), promo)}
+                            </span>
 
-                          <span
-                            className="
+                            <span
+                              className="
                               hidden
                               text-[10px]
                               text-forest
                               sm:inline
                             "
-                          >
-                            with {promo!.promoCode}
-                          </span>
+                            >
+                              with {promo!.promoCode}
+                            </span>
 
-                        </div>
+                          </div>
                         )}
 
                       </Link>
@@ -1057,6 +964,45 @@ export function CategoryProductSlider() {
               }
             )}
 
+          </div>
+        )}
+
+        {/* ======================================================
+            SCROLL PROGRESS TRACK & SEE ALL (MATCHING REFERENCE)
+            ====================================================== */}
+        {!isLoading && products.length > 0 && (
+          <div className="mx-auto mt-8 flex max-w-7xl items-center justify-between gap-5 sm:gap-8 px-4 sm:px-6">
+            {/* Scroll Progress Track */}
+            <div
+              ref={trackRef}
+              onMouseDown={handleTrackMouseDown}
+              className="relative h-1.5 sm:h-2 flex-1 max-w-[320px] sm:max-w-xl md:max-w-2xl lg:max-w-4xl cursor-pointer rounded-full bg-ink/10 select-none overflow-hidden"
+              role="progressbar"
+              aria-valuenow={Math.round(scrollProgress * 100)}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label="Product scroll progress"
+            >
+              <div
+                className="absolute top-0 bottom-0 rounded-full bg-[#2E2E2E] transition-[left] duration-150 ease-out"
+                style={{
+                  left: `${scrollProgress * (100 - thumbWidthPercent)}%`,
+                  width: `${thumbWidthPercent}%`,
+                }}
+              />
+            </div>
+
+            {/* See All Pill Button */}
+            <Link
+              href={
+                activeSlug
+                  ? `/products?category=${encodeURIComponent(activeSlug)}`
+                  : "/products"
+              }
+              className="inline-flex items-center gap-1.5 rounded-full border border-ink/50 bg-white px-5 sm:px-7 py-2 sm:py-2.5 text-sm sm:text-base font-medium text-ink transition-colors hover:border-ink hover:bg-ink/5 shrink-0"
+            >
+              See All &rarr;
+            </Link>
           </div>
         )}
 
@@ -1119,22 +1065,20 @@ function CategoryTab({
         "
       >
         <span
-          className={`whitespace-nowrap text-[12px] transition-colors ${
-            active
+          className={`whitespace-nowrap text-[12px] transition-colors ${active
               ? "font-semibold text-forest"
               : "font-medium text-ink/50 group-hover:text-forest"
-          }`}
+            }`}
         >
           {label}
         </span>
 
         {/* ACTIVE UNDERLINE */}
         <span
-          className={`h-[3px] w-[90px] rounded-full ${
-            active
+          className={`h-[3px] w-[90px] rounded-full ${active
               ? "bg-forest"
               : "bg-transparent"
-          }`}
+            }`}
         />
       </div>
     </button>
@@ -1173,8 +1117,8 @@ function AddToCartButton({
   const cartQuantity =
     isClient
       ? getItemQuantity(
-          item.variantId
-        )
+        item.variantId
+      )
       : 0;
 
   /* ============================================================

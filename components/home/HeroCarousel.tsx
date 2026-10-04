@@ -1,128 +1,349 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import Image from "next/image";
+import Link from "next/link";
+import { usePathname, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  HeroSlide,
+  getHeroSlidesForPath,
+} from "@/lib/hero.config";
+import { useHeroStore } from "@/store/useHeroStore";
 
-// const slides = [
-//   {
-//     title: "A2 Ghee, made the old way",
-//     subtitle: "Bilona-churned, lab-tested, delivered fresh.",
-//     cta: "Shop Ghee",
-//     image: "/images/slider/hero_caurosel_1.jpeg",
-//     href: "/products?category=ghee",
-//   },
-//   {
-//     title: "Wood cold-pressed oils",
-//     subtitle: "Extracted slowly, the way your grandmother would approve of.",
-//     cta: "Shop Oils",
-//     image: "/images/hero_caurosel_2.jpeg",
-//     href: "/products?category=wood-pressed-oils",
-//   },
-// ];
+export type { HeroSlide };
 
-const slides = [
-  {
-    title: "Pure. Traditional. Divantraa.",
-    subtitle:
-      "Bringing authentic, traditionally crafted foods from our roots to your home.",
-    cta: "Shop Ghee",
-    href: "/products",
-  },
-  {
-    title: "Goodness, made the traditional way",
-    subtitle:
-      "Thoughtfully crafted with time-honoured methods and quality ingredients.",
-    cta: "Shop Oils",
-    href: "/products?category=wood-pressed-oils",
-  },
-];
-
-/** Simple autoplaying hero carousel with smooth crossfade + slide transitions. */
-export function HeroCarousel() {
-  const [index, setIndex] = useState(0);
-
-  const nextSlide = () => {
-    setIndex((i) => (i + 1) % slides.length);
-  };
-
-  const prevSlide = () => {
-    setIndex((i) => (i - 1 + slides.length) % slides.length);
-  };
-
+/**
+ * Drop <NoHeroBanner /> inside any specific page file to completely disable
+ * the hero banner/slider for that page.
+ *
+ * Example:
+ * ```tsx
+ * import { NoHeroBanner } from "@/components/home/HeroCarousel";
+ *
+ * export default function PrivacyPolicyPage() {
+ *   return (
+ *     <>
+ *       <NoHeroBanner />
+ *       <main>...</main>
+ *     </>
+ *   );
+ * }
+ * ```
+ */
+export function NoHeroBanner() {
+  const setHeroDisabled = useHeroStore((s) => s.setHeroDisabled);
   useEffect(() => {
-    const t = setInterval(nextSlide, 5000);
-    return () => clearInterval(t);
-  }, []);
+    setHeroDisabled(true);
+    return () => setHeroDisabled(false);
+  }, [setHeroDisabled]);
+  return null;
+}
 
-  const slide = slides[index];
+export interface HeroCarouselProps {
+  /** Optional custom slides. Overrides route-based configuration. */
+  slides?: HeroSlide[];
+  /** Force banner mode (single image view, no arrows or rotation) */
+  isBanner?: boolean;
+  /** Custom height class override (e.g. h-[300px] or h-[400px]) */
+  heightClassName?: string;
+  /** Custom container class */
+  className?: string;
+  /** Auto-play rotation interval in ms (default 8500ms) */
+  autoPlayInterval?: number;
+  /** Show slide indicators when in slider mode (default true) */
+  showIndicators?: boolean;
+}
+
+function HeroCarouselContent({
+  slides: propSlides,
+  isBanner = false,
+  heightClassName,
+  className = "",
+  autoPlayInterval = 8500,
+  showIndicators = false,
+}: HeroCarouselProps) {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const category = searchParams?.get("category");
+  const isHeroDisabled = useHeroStore((s) => s.isHeroDisabled);
+
+  // If page requested to disable hero via <NoHeroBanner />, render nothing
+  if (isHeroDisabled) {
+    return null;
+  }
+
+  // Determine active slides: Prop override takes precedence, otherwise route-based lookup
+  const activeSlides =
+    propSlides && propSlides.length > 0
+      ? propSlides
+      : getHeroSlidesForPath(pathname, category);
+
+  // If page is not configured to show a slider or banner (e.g. cart, checkout, account), render nothing
+  if (!activeSlides || activeSlides.length === 0) {
+    return null;
+  }
+
+  // If there's only 1 slide or explicit isBanner flag -> Keep like a static Hero Banner!
+  const isSingleSlide = activeSlides.length === 1 || isBanner;
 
   return (
-    <section className="relative h-[50vh] min-h-[360px] bg-forest overflow-hidden">
-      {/* <AnimatePresence initial={false} mode="wait">
+    <HeroCarouselRenderer
+      slides={activeSlides}
+      isSingleSlide={isSingleSlide}
+      heightClassName={heightClassName}
+      className={className}
+      autoPlayInterval={autoPlayInterval}
+      showIndicators={showIndicators}
+      pathname={pathname}
+      category={category}
+    />
+  );
+}
+
+interface RendererProps {
+  slides: HeroSlide[];
+  isSingleSlide: boolean;
+  heightClassName?: string;
+  className: string;
+  autoPlayInterval: number;
+  showIndicators: boolean;
+  pathname: string;
+  category?: string | null;
+}
+
+function HeroCarouselRenderer({
+  slides,
+  isSingleSlide,
+  heightClassName,
+  className,
+  autoPlayInterval,
+  showIndicators,
+  pathname,
+  category,
+}: RendererProps) {
+  const [index, setIndex] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+
+  // Reset slide index when page route or category changes
+  useEffect(() => {
+    setIndex(0);
+  }, [pathname, category]);
+
+  const slideCount = slides.length;
+
+  const nextSlide = useCallback(() => {
+    if (slideCount <= 1) return;
+    setIndex((i) => (i + 1) % slideCount);
+  }, [slideCount]);
+
+  const prevSlide = useCallback(() => {
+    if (slideCount <= 1) return;
+    setIndex((i) => (i - 1 + slideCount) % slideCount);
+  }, [slideCount]);
+
+  // Auto-play interval: ONLY active in Slider mode (disabled in single-image Banner mode)
+  useEffect(() => {
+    if (isSingleSlide || isPaused || slideCount <= 1) return;
+    const timer = setInterval(nextSlide, autoPlayInterval);
+    return () => clearInterval(timer);
+  }, [isPaused, isSingleSlide, slideCount, autoPlayInterval, nextSlide]);
+
+  const currentSlide = slides[index] ?? slides[0];
+
+  // Default height: Banners are slightly more compact than full multi-slide hero carousel
+  const resolvedHeight =
+    heightClassName ||
+    (isSingleSlide
+      ? "h-[240px] sm:h-[280px] md:h-[320px] lg:h-[360px]"
+      : "h-[280px] sm:h-[320px] md:h-[360px] lg:h-[400px]");
+
+  // ── CASE 1: SINGLE IMAGE BANNER MODE ─────────────────────────────────
+  // When there is only 1 slide/image on a page:
+  // - No navigation arrows (ChevronLeft / ChevronRight)
+  // - No pagination indicators / dots
+  // - No cycling animation or interval timers
+  // - Displays as a sleek, crisp hero banner
+  if (isSingleSlide) {
+    return (
+      <section
+        className={`relative w-full ${resolvedHeight} max-w-[1920px] mx-auto overflow-hidden bg-neutral-950 ${className}`}
+      >
+        {/* Banner Background Image */}
+        <div className="absolute inset-0">
+          <Image
+            src={currentSlide.image}
+            alt={currentSlide.title || "Divantraa Banner"}
+            fill
+            priority
+            sizes="100vw"
+            quality={95}
+            className="object-cover object-center"
+            unoptimized
+          />
+          {/* Gentle soft gradient on the left for text contrast */}
+          <div className="absolute inset-0 bg-gradient-to-r from-black/55 via-black/25 to-transparent pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-transparent pointer-events-none" />
+        </div>
+
+        {/* Banner Content */}
+        <div className="relative z-10 flex h-full items-center px-8 md:px-16 lg:px-24">
+          <div className="max-w-2xl text-left">
+            <p className="mb-2 text-xs sm:text-sm font-semibold uppercase tracking-[0.25em] text-cream drop-shadow-sm">
+              {currentSlide.tag || "DIVANTRAA"}
+            </p>
+
+            {currentSlide.title && (
+              <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-semibold leading-tight text-white drop-shadow-md">
+                {currentSlide.title}
+              </h1>
+            )}
+
+            {currentSlide.subtitle && (
+              <p className="mt-2.5 sm:mt-3 max-w-xl text-sm sm:text-base md:text-lg leading-relaxed text-stone-100 drop-shadow">
+                {currentSlide.subtitle}
+              </p>
+            )}
+
+            {currentSlide.cta && currentSlide.href && (
+              <Link
+                href={currentSlide.href}
+                className="mt-5 sm:mt-6 inline-flex items-center justify-center rounded-full bg-cream px-7 py-2.5 sm:py-3 text-sm sm:text-base font-semibold text-neutral-900 shadow-md transition-all hover:bg-white hover:shadow-lg"
+              >
+                {currentSlide.cta}
+              </Link>
+            )}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  // ── CASE 2: MULTI-SLIDE CAROUSEL MODE (e.g. Main Home Page) ──────────
+  // When there are multiple slides:
+  // - Interactive slider with Framer Motion transitions
+  // - Left & Right chevron navigation arrows
+  // - Auto-advance timer (paused on hover)
+  // - Slide indicator dots
+  return (
+    <section
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
+      className={`relative w-full ${resolvedHeight} max-w-[1920px] mx-auto overflow-hidden bg-neutral-950 ${className}`}
+    >
+      {/* Background Image — Full opacity with crisp colors and smooth crossfade */}
+      <AnimatePresence initial={false}>
         <motion.div
-          key={index}
+          key={currentSlide.image}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.8, ease: "easeInOut" }}
+          transition={{ duration: 0.7, ease: "easeInOut" }}
           className="absolute inset-0"
         >
           <Image
-            src={slide.image}
-            alt={slide.title}
+            src={currentSlide.image}
+            alt={currentSlide.title || "Slide"}
             fill
-            className="object-cover"
             priority={index === 0}
+            sizes="100vw"
+            quality={95}
+            className="object-cover object-center"
+            unoptimized
           />
-        </motion.div>
-      </AnimatePresence> */}
 
+          {/* Gentle soft gradient on the left for text contrast */}
+          <div className="absolute inset-0 bg-gradient-to-r from-black/55 via-black/20 to-transparent pointer-events-none" />
+        </motion.div>
+      </AnimatePresence>
+
+      {/* Slide Text Content */}
       <AnimatePresence initial={false} mode="wait">
         <motion.div
-          key={index}
-          initial={{ opacity: 0, x: 30 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -30 }}
-          transition={{ duration: 0.6, ease: "easeInOut" }}
-          className="absolute inset-0 flex items-center justify-center px-6 text-center"
+          key={`slider_${index}`}
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -16 }}
+          transition={{ duration: 0.5, ease: "easeInOut" }}
+          className="relative z-10 flex h-full items-center px-8 md:px-16 lg:px-24"
         >
-          <div className="max-w-3xl">
-            <p className="mb-4 text-sm font-medium uppercase tracking-[0.3em] text-cream/70">
-              DIVANTRAA
+          <div className="max-w-2xl text-left">
+            <p className="mb-2 text-xs sm:text-sm font-semibold uppercase tracking-[0.25em] text-cream drop-shadow-sm">
+              {currentSlide.tag || "DIVANTRAA"}
             </p>
 
-            <h1 className="text-4xl font-semibold leading-tight text-cream md:text-6xl">
-              {slide.title}
-            </h1>
+            {currentSlide.title && (
+              <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-semibold leading-tight text-white drop-shadow-md">
+                {currentSlide.title}
+              </h1>
+            )}
 
-            <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-cream/80 md:text-xl">
-              {slide.subtitle}
-            </p>
+            {currentSlide.subtitle && (
+              <p className="mt-2.5 sm:mt-3 max-w-xl text-sm sm:text-base md:text-lg leading-relaxed text-stone-100 drop-shadow">
+                {currentSlide.subtitle}
+              </p>
+            )}
 
-            <a
-              href={slide.href}
-              className="mt-8 inline-flex rounded-full bg-cream px-7 py-3 font-medium text-forest transition-colors hover:bg-cream/90"
-            >
-              {slide.cta}
-            </a>
+            {currentSlide.cta && currentSlide.href && (
+              <Link
+                href={currentSlide.href}
+                className="mt-5 sm:mt-6 inline-flex items-center justify-center rounded-full bg-cream px-7 py-2.5 sm:py-3 text-sm sm:text-base font-semibold text-neutral-900 shadow-md transition-all hover:bg-white hover:shadow-lg"
+              >
+                {currentSlide.cta}
+              </Link>
+            )}
           </div>
         </motion.div>
       </AnimatePresence>
-      
+
+      {/* Navigation Arrows */}
       <button
         onClick={prevSlide}
-        className="absolute left-4 top-1/2 -translate-y-1/2 z-10 p-2 rounded-full bg-cream/20 hover:bg-cream/40 transition-colors"
+        aria-label="Previous slide"
+        className="absolute left-4 top-1/2 z-20 -translate-y-1/2 rounded-full bg-black/30 p-2.5 backdrop-blur-sm transition-colors hover:bg-black/55 text-cream"
       >
-        <ChevronLeft className="text-cream" />
+        <ChevronLeft className="w-5 h-5 md:w-6 md:h-6" />
       </button>
+
       <button
         onClick={nextSlide}
-        className="absolute right-4 top-1/2 -translate-y-1/2 z-10 p-2 rounded-full bg-cream/20 hover:bg-cream/40 transition-colors"
+        aria-label="Next slide"
+        className="absolute right-4 top-1/2 z-20 -translate-y-1/2 rounded-full bg-black/30 p-2.5 backdrop-blur-sm transition-colors hover:bg-black/55 text-cream"
       >
-        <ChevronRight className="text-cream" />
+        <ChevronRight className="w-5 h-5 md:w-6 md:h-6" />
       </button>
+
+      {/* Slide Indicators */}
+      {showIndicators && (
+        <div className="absolute bottom-4 sm:bottom-5 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2">
+          {slides.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setIndex(i)}
+              aria-label={`Go to slide ${i + 1}`}
+              className={`h-2 rounded-full transition-all duration-300 ${i === index
+                ? "w-7 bg-white shadow-sm"
+                : "w-2 bg-white/50 hover:bg-white/80"
+                }`}
+            />
+          ))}
+        </div>
+      )}
     </section>
   );
 }
+
+/**
+ * Public export wrapped in a Suspense boundary for Next.js useSearchParams safety
+ */
+export function HeroCarousel(props: HeroCarouselProps) {
+  return (
+    <Suspense fallback={null}>
+      <HeroCarouselContent {...props} />
+    </Suspense>
+  );
+}
+
+// Also export default for convenience
+export default HeroCarousel;
