@@ -28,15 +28,9 @@ function LogoLockup({ size = "md" }: { size?: "md" | "sm" }) {
   const wordH = size === "md" ? 34 : 31;
   const wordW = Math.round(wordH * (560 / 96));
   return (
-    <span className="flex items-center gap-2">
+    <span className="animate-logo-glow flex items-center gap-2">
       <Image src={LOGO_MARK} alt="" width={markW} height={markH} priority />
-      <span className="relative overflow-hidden">
-        <Image src={LOGO_WORDMARK} alt="Divantraa" width={wordW} height={wordH} priority />
-        <span
-          aria-hidden
-          className="animate-logo-shine pointer-events-none absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-gold/80 to-transparent"
-        />
-      </span>
+      <Image src={LOGO_WORDMARK} alt="Divantraa" width={wordW} height={wordH} priority />
     </span>
   );
 }

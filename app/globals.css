@@ -11,13 +11,15 @@
   animation: pulse-glow 2s ease-in-out infinite;
 }
 
-/* A diagonal gold streak that sweeps across the header logo on a loop. */
-@keyframes logo-shine {
-  0%   { transform: translateX(-150%) skewX(-20deg); }
-  35%, 100% { transform: translateX(250%) skewX(-20deg); }
+/* A golden outline/glow around the header logo (mark + wordmark) that fades in and out on a loop —
+   follows the actual artwork shape (drop-shadow, not a box), so it reads as a glowing outline rather
+   than a sweeping highlight. */
+@keyframes logo-glow {
+  0%, 100% { filter: drop-shadow(0 0 0 rgba(211, 162, 74, 0)); }
+  50%      { filter: drop-shadow(0 0 5px rgba(211, 162, 74, 0.95)) drop-shadow(0 0 10px rgba(211, 162, 74, 0.6)); }
 }
-.animate-logo-shine {
-  animation: logo-shine 1.8s ease-in-out infinite;
+.animate-logo-glow {
+  animation: logo-glow 1.4s ease-in-out infinite;
 }
 
 /* ── Design token layer (Anveshan-aligned) ─────────────────── */

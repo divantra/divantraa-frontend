@@ -44,6 +44,7 @@ export interface ProductVariant {
   isActive:       boolean;
   avgRating?:     number | null;    // list responses only — real if the product has reviews, else a placeholder
   reviewCount?:   number;
+  isBestSeller?:  boolean;          // list responses only — one randomly (but stably) chosen variant per featured product
 }
 
 // ── Product — the listing ──────────────────────────────────────
