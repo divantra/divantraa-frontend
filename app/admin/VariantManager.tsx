@@ -40,12 +40,17 @@ interface VariantFormState {
   optionSizeValue: string;
   optionContainer: string;
   isDefault:       boolean;
+  weight:          string;
+  lengthCm:        string;
+  widthCm:         string;
+  heightCm:        string;
 }
 
 const emptyVariantForm: VariantFormState = {
   title: "", sku: "", packaging: "", price: "", compareAtPrice: "", stock: "0",
   unitQuantity: "", unitLabel: "", optionSizeKey: "Size", optionSizeValue: "",
   optionContainer: "", isDefault: false,
+  weight: "", lengthCm: "10", widthCm: "10", heightCm: "10",
 };
 
 function toVariantForm(v: ProductVariant): VariantFormState {
@@ -57,6 +62,8 @@ function toVariantForm(v: ProductVariant): VariantFormState {
     stock: String(v.stock), unitQuantity: v.unitQuantity != null ? String(v.unitQuantity) : "",
     unitLabel: v.unitLabel ?? "", optionSizeKey: sizeKey, optionSizeValue: Size ?? Weight ?? "",
     optionContainer: Container ?? Object.values(restOptions)[0] ?? "", isDefault: v.isDefault,
+    weight: v.weight != null ? String(v.weight) : "",
+    lengthCm: String(v.lengthCm ?? 10), widthCm: String(v.widthCm ?? 10), heightCm: String(v.heightCm ?? 10),
   };
 }
 
@@ -69,6 +76,10 @@ function buildPayload(f: VariantFormState) {
     price: parseFloat(f.price), compareAtPrice: f.compareAtPrice ? parseFloat(f.compareAtPrice) : undefined,
     stock: parseInt(f.stock, 10) || 0, unitQuantity: f.unitQuantity ? parseFloat(f.unitQuantity) : undefined,
     unitLabel: f.unitLabel || undefined, options, isDefault: f.isDefault,
+    weight: f.weight ? parseFloat(f.weight) : undefined,
+    lengthCm: f.lengthCm ? parseFloat(f.lengthCm) : undefined,
+    widthCm: f.widthCm ? parseFloat(f.widthCm) : undefined,
+    heightCm: f.heightCm ? parseFloat(f.heightCm) : undefined,
   };
 }
 
@@ -149,6 +160,32 @@ function VariantFields({ form, setForm }: { form: VariantFormState; setForm: (f:
         <label className="block text-[10px] font-medium text-ink/50 mb-0.5">Container (option label)</label>
         <input value={form.optionContainer} onChange={(e) => setForm({ ...form, optionContainer: e.target.value })}
           placeholder="Glass Jar" className={inputCls} />
+      </div>
+
+      <div className="sm:col-span-4 pt-1 mt-1 border-t border-ink/5">
+        <p className="text-[10px] font-semibold text-ink/40 uppercase tracking-wider mb-1.5">
+          Shipping (Shiprocket courier rating) — dimensions default to 10×10×10cm until set
+        </p>
+      </div>
+      <div>
+        <label className="block text-[10px] font-medium text-ink/50 mb-0.5">Weight (g)</label>
+        <input type="number" min="0" step="1" value={form.weight} onChange={(e) => setForm({ ...form, weight: e.target.value })}
+          placeholder="500" className={inputCls} />
+      </div>
+      <div>
+        <label className="block text-[10px] font-medium text-ink/50 mb-0.5">Length (cm)</label>
+        <input type="number" min="0" step="0.1" value={form.lengthCm} onChange={(e) => setForm({ ...form, lengthCm: e.target.value })}
+          className={inputCls} />
+      </div>
+      <div>
+        <label className="block text-[10px] font-medium text-ink/50 mb-0.5">Width (cm)</label>
+        <input type="number" min="0" step="0.1" value={form.widthCm} onChange={(e) => setForm({ ...form, widthCm: e.target.value })}
+          className={inputCls} />
+      </div>
+      <div>
+        <label className="block text-[10px] font-medium text-ink/50 mb-0.5">Height (cm)</label>
+        <input type="number" min="0" step="0.1" value={form.heightCm} onChange={(e) => setForm({ ...form, heightCm: e.target.value })}
+          className={inputCls} />
       </div>
     </div>
   );

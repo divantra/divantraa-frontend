@@ -34,6 +34,9 @@ export interface ProductVariant {
   images:         string[];                   // variant-specific; [] = use product.images
   resolvedImages: string[];                   // backend resolves: variant.images ?? product.images
   weight:         number | null;              // grams
+  lengthCm:       number;                     // package dimensions, used by Shiprocket courier rating
+  widthCm:        number;                     // (dummy 10cm default until real values are entered)
+  heightCm:       number;
   unitQuantity:   number | null;              // per-unit price basis, e.g. 1
   unitLabel:      string | null;              // e.g. "L" -> "Rs 523/L"
   sortOrder:      number;
