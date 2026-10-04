@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
@@ -133,22 +133,22 @@ function HeroCarouselRenderer({
 
   const slideCount = slides.length;
 
-  const nextSlide = () => {
+  const nextSlide = useCallback(() => {
     if (slideCount <= 1) return;
     setIndex((i) => (i + 1) % slideCount);
-  };
+  }, [slideCount]);
 
-  const prevSlide = () => {
+  const prevSlide = useCallback(() => {
     if (slideCount <= 1) return;
     setIndex((i) => (i - 1 + slideCount) % slideCount);
-  };
+  }, [slideCount]);
 
   // Auto-play interval: ONLY active in Slider mode (disabled in single-image Banner mode)
   useEffect(() => {
     if (isSingleSlide || isPaused || slideCount <= 1) return;
     const timer = setInterval(nextSlide, autoPlayInterval);
     return () => clearInterval(timer);
-  }, [index, isPaused, isSingleSlide, slideCount, autoPlayInterval]);
+  }, [isPaused, isSingleSlide, slideCount, autoPlayInterval, nextSlide]);
 
   const currentSlide = slides[index] ?? slides[0];
 

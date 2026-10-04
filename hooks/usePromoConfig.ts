@@ -9,15 +9,47 @@ export interface PromoConfig {
   coinEarnRate: number;
 }
 
+const CACHE_KEY = "divantraa_promo_config";
+
+/** Default fallback values so SSR and initial client load never suffer from layout shifts */
+export const DEFAULT_PROMO_CONFIG: PromoConfig = {
+  promoCode: "DIWAN15",
+  promoDiscountPercent: 15,
+  coinEarnRate: 4,
+};
+
+function getInitialPromoConfig(): PromoConfig {
+  if (typeof window === "undefined") return DEFAULT_PROMO_CONFIG;
+  try {
+    const cached = localStorage.getItem(CACHE_KEY);
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (parsed && typeof parsed.promoDiscountPercent === "number") {
+        return parsed;
+      }
+    }
+  } catch {}
+  return DEFAULT_PROMO_CONFIG;
+}
+
 /**
- * The standing promo code and coin-earn rate, from the server — nothing hard-coded.
- * Shared by every "Best Price with CODE" / "earn N coins" display in the app.
+ * The standing promo code and coin-earn rate, with instant hydration
+ * to prevent layout shifts (CLS) on page refresh.
  */
 export function usePromoConfig() {
   return useQuery<PromoConfig>({
     queryKey: ["promo-config"],
-    queryFn: async () => (await api.get<{ data: PromoConfig }>("/pricing/promo-config")).data.data,
+    queryFn: async () => {
+      const data = (await api.get<{ data: PromoConfig }>("/pricing/promo-config")).data.data;
+      if (typeof window !== "undefined" && data) {
+        try {
+          localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+        } catch {}
+      }
+      return data;
+    },
     staleTime: 5 * 60_000,
+    placeholderData: getInitialPromoConfig,
   });
 }
 

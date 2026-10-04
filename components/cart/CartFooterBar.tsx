@@ -5,13 +5,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCartStore } from "@/store/useCartStore";
 import Image from "next/image";
-import { ArrowRight , ShoppingCart } from "lucide-react";
+import { ArrowRight, ShoppingCart } from "lucide-react";
 
 export function CartFooterBar() {
   const items = useCartStore((s) => s.items);
   const itemCount = useCartStore((s) => s.itemCount());
   const total = useCartStore((s) => s.totalPrice());
-  const openCart = useCartStore((s) => s.openCart);
+  // const openCart = useCartStore((s) => s.openCart);
   const isCartOpen = useCartStore((s) => s.isOpen);
   const pathname = usePathname();
 
@@ -29,8 +29,8 @@ export function CartFooterBar() {
 
   return (
     <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50">
-        <div className="bg-forest text-white rounded-full px-3 py-2 flex items-center gap-6 shadow-lg w-full max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg">
-        
+      <div className="bg-forest text-white rounded-full px-3 py-2 flex items-center gap-6 shadow-lg w-full max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg">
+
         {/* Thumbnails with overlap */}
         <div className="flex -space-x-3">
           {visibleItems.map((item) => (
