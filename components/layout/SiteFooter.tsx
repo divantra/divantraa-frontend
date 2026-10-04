@@ -10,10 +10,10 @@ import {
   X,
 } from "lucide-react";
 
-import { CartFooterBar } from "../cart/CartFooterBar";
 import { getImageUrl } from "@/lib/image.utils";
 import { api } from "@/lib/api";
 import { getAxiosErrorMessage } from "@/lib/errorUtils";
+import { CartFooterBar } from "@/components/cart/CartFooterBar";
 
 const FOOTER_BG = getImageUrl("public/divantraa-footer-background-image.webp");
 

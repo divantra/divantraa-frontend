@@ -27,14 +27,17 @@ export default function ProductsContent() {
     <>
       {/* <WelcomeBanner /> */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-10 min-h-[60vh]">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="font-display text-2xl sm:text-3xl text-ink capitalize">
-            {category ? category.replace(/-/g, " ") : "Shop now"}
-          </h1>
+        <div className="flex items-center mb-6">
+          {category && (
+            <h1 className="font-display text-2xl sm:text-3xl text-ink capitalize">
+              {category.replace(/-/g, " ")}
+            </h1>
+          )}
+
           <select
             value={sort}
             onChange={(e) => setSort(e.target.value)}
-            className="border border-ink/10 rounded-lg px-3 py-2 text-sm bg-white text-ink/70"
+            className="border border-ink/10 rounded-lg px-3 py-2 text-sm bg-white text-ink/70 ml-auto"
           >
             <option value="newest">Newest</option>
             <option value="featured">Featured</option>

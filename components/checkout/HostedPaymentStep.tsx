@@ -2,7 +2,7 @@
 
 import { Check, Loader2, Lock, ShieldCheck } from "lucide-react";
 import { rupees, type Quote } from "@/hooks/useQuote";
-import type { PaymentChoice } from "@/components/checkout/PaymentStep";
+import type { PaymentChoice } from "./PaymentStep";
 
 /**
  * Simple payment step: one "Pay securely" button that sends the customer to Cashfree's own payment page, which
@@ -31,7 +31,7 @@ export default function HostedPaymentStep(props: {
   const isCod = selected === "cod" && codOk;
   // If online payments are unavailable the only way to order is cash on delivery.
   const useCod = isCod || (!onlineOk && codOk);
-  const codTotal    = props.codFinalTotal    ?? cod?.total;
+  const codTotal = props.codFinalTotal ?? cod?.total;
   const onlineTotal = props.onlineFinalTotal ?? online?.total;
   const total = useCod ? codTotal : onlineTotal;
   const saving = onlineOk && onlineTotal != null && codTotal != null && codTotal > onlineTotal ? codTotal - onlineTotal : 0;

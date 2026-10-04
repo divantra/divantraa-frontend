@@ -1,6 +1,10 @@
+import type { Metadata } from "next";
 import { LoginFlow } from "@/components/auth/LoginFlow";
 
-export const metadata = { title: "Log in — Divantraa" };
+export const metadata: Metadata = {
+  title: "Log In",
+  description: "Log in to your Divantraa account to manage orders, addresses, and rewards.",
+};
 
 export default function LoginPage() {
   return (

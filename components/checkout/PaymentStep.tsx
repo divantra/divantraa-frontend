@@ -3,9 +3,9 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Banknote, Check, ChevronRight, CreditCard, Landmark, Loader2, Lock, ShieldCheck, Smartphone, Wallet } from "lucide-react";
 import { rupees, type Quote } from "@/hooks/useQuote";
-import { CfField, type FieldState } from "@/components/checkout/CfParts";
-import { LogoRow, PayLogo } from "@/components/checkout/PayLogo";
-import QrCard, { type QrState } from "@/components/checkout/QrCard";
+import { CfField, type FieldState } from "./CfParts";
+import { LogoRow, PayLogo } from "./PayLogo";
+import QrCard, { type QrState } from "./QrCard";
 import type { CashfreeSDK, CfComponent } from "@/lib/cashfree";
 import { BANKS, TEST_BANK, UPI_APPS, WALLETS, isValidMobile, isValidVpa } from "@/lib/payMethods";
 
@@ -48,7 +48,7 @@ export default function PaymentStep(p: Props) {
   const onlineOk = !!online?.enabled;
   const codOk = !!cod?.enabled;
   const pct = quote?.onlineDiscountPercent ?? 0;
-  const codTotal    = p.codFinalTotal    ?? cod?.total;
+  const codTotal = p.codFinalTotal ?? cod?.total;
   const onlineTotalN = p.onlineFinalTotal ?? online?.total;
   const onlineAmount = onlineTotalN != null ? rupees(onlineTotalN) : "—";
   const sandbox = quote?.gateway?.mode === "sandbox";

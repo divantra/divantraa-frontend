@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy — Divantraa",
+  title: "Privacy Policy",
   description:
     "Privacy Policy for Divantraa Products Private Limited and www.divantraa.com.",
 };
