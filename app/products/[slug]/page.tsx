@@ -342,7 +342,7 @@ export default function ProductDetailsPage() {
           {/* Cart actions */}
           <div className="grid grid-cols-2 gap-3 mb-6">
             {cartQuantity > 0 ? (
-              <div className="flex items-center justify-center border-2 border-leaf rounded-xl col-span-1">
+              <div className="animate-add-pop flex items-center justify-center border-2 border-leaf rounded-xl col-span-1">
                 <button
                   onClick={() => {
                     if (!activeVariant) return;

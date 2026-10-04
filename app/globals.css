@@ -22,6 +22,17 @@
   animation: logo-glow 1.4s ease-in-out infinite;
 }
 
+/* A quick confirming "pop" played once when an item's add button swaps to its quantity stepper —
+   a clearer in-the-moment confirmation than relying on the floating cart bar alone. */
+@keyframes add-pop {
+  0%   { transform: scale(0.8); opacity: 0; }
+  60%  { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1); }
+}
+.animate-add-pop {
+  animation: add-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
 /* ── Design token layer (Anveshan-aligned) ─────────────────── */
 :root {
   --color-forest:  #00584B;
