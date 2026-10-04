@@ -13,7 +13,7 @@ const CACHE_KEY = "divantraa_promo_config";
 
 /** Default fallback values so SSR and initial client load never suffer from layout shifts */
 export const DEFAULT_PROMO_CONFIG: PromoConfig = {
-  promoCode: "DIWAN15",
+  promoCode: "DIVANT15",
   promoDiscountPercent: 15,
   coinEarnRate: 4,
 };
