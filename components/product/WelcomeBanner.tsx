@@ -3,7 +3,7 @@ import { Leaf } from "lucide-react";
 /** Brand welcome message shown below the hero carousel on the all-products page. */
 export default function WelcomeBanner() {
   return (
-    <div className="mx-auto max-w-2xl px-4 py-10 text-center sm:py-12">
+    <div className="mx-auto max-w-2xl px-4 pt-6 pb-2 text-center sm:pt-8 sm:pb-3">
       <h2 className="font-display text-2xl text-ink sm:text-3xl">Welcome to Divantraa</h2>
 
       <div className="mx-auto mt-3 flex max-w-xs items-center gap-2">
