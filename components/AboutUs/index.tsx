@@ -5,24 +5,8 @@ import React from "react";
 const AboutUs: React.FC = () => {
   return (
     <div className="bg-white text-ink">
-      {/* Hero Section */}
-      <section
-        className="relative bg-cover bg-top bg-no-repeat py-24 text-center text-white"
-        style={{ backgroundImage: `url('${getImageUrl('public/divantraa-logo-main.jpeg')}')` }}
-      >
-        <div className="absolute inset-0 bg-black/40" />
-        <div className="relative z-10 max-w-3xl mx-auto px-6">
-          <h1 className="font-display text-4xl md:text-5xl font-semibold mb-4 text-white">
-            About Divantraa
-          </h1>
-          <p className="text-lg md:text-xl font-light text-white/85">
-            Pure. Sustainable. Handcrafted wellness rooted in nature.
-          </p>
-        </div>
-      </section>
-
       {/* About Section */}
-      <section className="max-w-7xl mx-auto px-6 grid md:grid-cols-2 gap-10 items-center">
+      <section className="max-w-7xl mx-auto px-6 py-14 sm:py-20 grid md:grid-cols-2 gap-10 items-center">
         <div className="space-y-5">
           <h2 className="font-display text-3xl font-semibold text-forest">
             Who We Are
