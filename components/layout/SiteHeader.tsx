@@ -21,6 +21,21 @@ import { useDebounce } from "@/hooks/useDebounce";
 const LOGO_MARK = "/logo-mark.png";           // 242×240 — the sun/leaf mark
 const LOGO_WORDMARK = "/logo-wordmark-header.png"; // 560×96 — "DIVANTRAA" only (no tagline, for the compact header)
 
+/** A logo image with a light sweep masked to its own pixels — see .animate-shimmer-sweep in globals.css. */
+function ShimmerImage({ src, alt, width, height, priority }: { src: string; alt: string; width: number; height: number; priority?: boolean }) {
+  const maskUrl = `url(${src})`;
+  return (
+    <span className="relative inline-block shrink-0" style={{ width, height }}>
+      <Image src={src} alt={alt} width={width} height={height} priority={priority} />
+      <span
+        aria-hidden
+        className="animate-shimmer-sweep pointer-events-none absolute inset-0"
+        style={{ WebkitMaskImage: maskUrl, maskImage: maskUrl }}
+      />
+    </span>
+  );
+}
+
 /** Mark + wordmark side by side. `size="sm"` for the mobile bars, `size="md"` for desktop. */
 function LogoLockup({ size = "md" }: { size?: "md" | "sm" }) {
   const markH = size === "md" ? 60 : 48;
@@ -28,9 +43,9 @@ function LogoLockup({ size = "md" }: { size?: "md" | "sm" }) {
   const wordH = size === "md" ? 34 : 31;
   const wordW = Math.round(wordH * (560 / 96));
   return (
-    <span className="animate-logo-glow flex items-center gap-2">
-      <Image src={LOGO_MARK} alt="" width={markW} height={markH} priority />
-      <Image src={LOGO_WORDMARK} alt="Divantraa" width={wordW} height={wordH} priority />
+    <span className="flex items-center gap-2">
+      <ShimmerImage src={LOGO_MARK} alt="" width={markW} height={markH} priority />
+      <ShimmerImage src={LOGO_WORDMARK} alt="Divantraa" width={wordW} height={wordH} priority />
     </span>
   );
 }
