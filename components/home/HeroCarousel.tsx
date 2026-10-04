@@ -9,7 +9,6 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
   HeroSlide,
   getHeroSlidesForPath,
-  HOME_SLIDES,
 } from "@/lib/hero.config";
 import { useHeroStore } from "@/store/useHeroStore";
 
@@ -63,7 +62,7 @@ function HeroCarouselContent({
   heightClassName,
   className = "",
   autoPlayInterval = 8500,
-  showIndicators = true,
+  showIndicators = false,
 }: HeroCarouselProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -323,11 +322,10 @@ function HeroCarouselRenderer({
               key={i}
               onClick={() => setIndex(i)}
               aria-label={`Go to slide ${i + 1}`}
-              className={`h-2 rounded-full transition-all duration-300 ${
-                i === index
-                  ? "w-7 bg-white shadow-sm"
-                  : "w-2 bg-white/50 hover:bg-white/80"
-              }`}
+              className={`h-2 rounded-full transition-all duration-300 ${i === index
+                ? "w-7 bg-white shadow-sm"
+                : "w-2 bg-white/50 hover:bg-white/80"
+                }`}
             />
           ))}
         </div>
