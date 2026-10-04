@@ -30,7 +30,7 @@ export function OtpStep({ phone, onEditPhone, onVerified }: OtpStepProps) {
   const inputsRef = useRef<Array<HTMLInputElement | null>>([]);
   const hasAutoSubmitted = useRef(false);
 
-  const sendOtp = useSendOtp();     // for initial send (not used here)
+  // const sendOtp = useSendOtp();     // for initial send (not used here)
   const resendOtp = useResendOtp(); // for explicit resend
   const verifyOtp = useVerifyOtp();
 
@@ -149,13 +149,12 @@ export function OtpStep({ phone, onEditPhone, onVerified }: OtpStepProps) {
             onChange={(e) => handleDigitChange(i, e.target.value)}
             onPaste={(e) => handlePaste(i, e)}
             onKeyDown={(e) => handleKeyDown(i, e)}
-            className={`h-14 w-11 rounded-xl border-2 text-center text-2xl font-semibold text-ink outline-none transition-colors bg-white ${
-              verifyOtp.isError
+            className={`h-14 w-11 rounded-xl border-2 text-center text-2xl font-semibold text-ink outline-none transition-colors bg-white ${verifyOtp.isError
                 ? "border-red-400"
                 : digit
-                ? "border-leaf"
-                : "border-ink/10 focus:border-leaf"
-            }`}
+                  ? "border-leaf"
+                  : "border-ink/10 focus:border-leaf"
+              }`}
           />
         ))}
       </div>

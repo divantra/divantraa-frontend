@@ -6,7 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type { Product } from "@/types/product";
 import ProductSection from "@/components/product/ProductSection";
-import WelcomeBanner from "@/components/product/WelcomeBanner";
+// import WelcomeBanner from "@/components/product/WelcomeBanner";
 
 export default function ProductsContent() {
   const searchParams = useSearchParams();

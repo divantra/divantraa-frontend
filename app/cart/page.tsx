@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -45,8 +45,8 @@ async function syncItemToServer(variantId: string, quantity: number, user: unkno
 // ── Page component ─────────────────────────────────────────────────
 
 export default function CartPage() {
-  const router        = useRouter();
-  const user          = useAuthStore((s) => s.user);
+  const router = useRouter();
+  const user = useAuthStore((s) => s.user);
   const openLoginModal = useUiStore((s) => s.openLoginModal);
   const { items, updateQuantity, removeItem, clearCart, subtotal } = useCartStore();
   const [syncing, setSyncing] = useState<string | null>(null);
@@ -54,12 +54,12 @@ export default function CartPage() {
   const { data: quote } = useQuote(items);
   const cod = quote?.methods.cod;
 
-  const sub      = subtotal();
+  const sub = subtotal();
   const shipping = cod?.shippingFee ?? 0;
-  const codFee   = cod?.codFee ?? 0;
-  const total    = cod ? cod.total : sub;
+  const codFee = cod?.codFee ?? 0;
+  const total = cod ? cod.total : sub;
   const freeShippingThreshold = quote?.freeShippingThreshold ?? 0;
-  const savings  = items.reduce((s, i) => {
+  const savings = items.reduce((s, i) => {
     const mrp = i.compareAtPrice;
     if (mrp && mrp > i.price) s += (mrp - i.price) * i.quantity;
     return s;
@@ -68,7 +68,7 @@ export default function CartPage() {
   // Related products — fetch featured/active products
   const { data: relatedData } = useQuery<{ data: Product[] }>({
     queryKey: ["cart-related"],
-    queryFn:  () => api.get("/products?limit=6&sort=featured").then((r) => r.data),
+    queryFn: () => api.get("/products?limit=6&sort=featured").then((r) => r.data),
     staleTime: 5 * 60 * 1000,
   });
   const related = (relatedData?.data ?? []).filter(
@@ -140,16 +140,15 @@ export default function CartPage() {
             </div>
 
             {items.map((item, idx) => {
-              const mrp  = item.compareAtPrice;
+              const mrp = item.compareAtPrice;
               const disc = discountPct(item.price, mrp);
               const isSyncing = syncing === item.variantId;
 
               return (
                 <div
                   key={item.variantId}
-                  className={`flex gap-4 px-6 py-5 ${
-                    idx < items.length - 1 ? "border-b border-ink/5" : ""
-                  } ${isSyncing ? "opacity-60" : ""}`}
+                  className={`flex gap-4 px-6 py-5 ${idx < items.length - 1 ? "border-b border-ink/5" : ""
+                    } ${isSyncing ? "opacity-60" : ""}`}
                 >
                   {/* Image */}
                   <Link href={`/products/${item.slug}`} className="shrink-0">

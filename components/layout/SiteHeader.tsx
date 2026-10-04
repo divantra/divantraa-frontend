@@ -18,21 +18,24 @@ import { api } from "@/lib/api";
 import type { Product } from "@/types/product";
 import { useDebounce } from "@/hooks/useDebounce";
 import { CartIcon } from "@/components/Icon/CartIcon";
+import { getImageUrl } from "@/lib/image.utils";
 
-const LOGO_MARK = "/logo-mark.png";           // 242×240 — the sun/leaf mark
-const LOGO_WORDMARK = "/logo-wordmark-header.png"; // 560×96 — "DIVANTRAA" only (no tagline, for the compact header)
+const LOGO_HORIZONTAL = getImageUrl("/public/logo/divantraa-horizontal-logo.png"); // 943×240 — Tight Full HD Sun mark + DIVANTRAA + Tagline "Pure Beginnings. Healthy Living."
 
-/** Mark + wordmark side by side. `size="sm"` for the mobile bars, `size="md"` for desktop. */
+/** Full HD brand lockup with mark and tagline. `size="sm"` for mobile topbar, `size="md"` for desktop header. */
 function LogoLockup({ size = "md" }: { size?: "md" | "sm" }) {
-  const markH = size === "md" ? 52 : 44;
-  const markW = Math.round(markH * (242 / 240));
-  const wordH = size === "md" ? 30 : 29;
-  const wordW = Math.round(wordH * (560 / 96));
   return (
-    <span className="flex items-center gap-2">
-      <Image src={LOGO_MARK} alt="" width={markW} height={markH} priority />
-      <Image src={LOGO_WORDMARK} alt="Divantraa" width={wordW} height={wordH} priority />
-    </span>
+    <Image
+      src={LOGO_HORIZONTAL}
+      alt="Divantraa - Pure Beginnings. Healthy Living."
+      width={1043}
+      height={240}
+      quality={100}
+      unoptimized
+      priority
+      className={`object-contain select-none ${size === "md" ? "h-[65px] w-[250px]" : "h-10 w-[200px]"
+        }`}
+    />
   );
 }
 
