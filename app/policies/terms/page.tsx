@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Terms of Service — Divantraa",
+  title: "Terms of Service",
+  description: "Terms of Service for Divantraa Products Private Limited and www.divantraa.com.",
 };
 
 export default function TermsOfServicePage() {

@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Refund, Returns & Cancellation Policy — Divantraa",
+  title: "Refund & Cancellation Policy",
+  description: "Refund, Returns and Cancellation Policy for Divantraa products.",
 };
 
 export default function RefundPolicyPage() {

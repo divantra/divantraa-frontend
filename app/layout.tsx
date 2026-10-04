@@ -12,6 +12,8 @@ import { CartDrawer } from "@/components/cart/CartDrawer";
 import { AddOnsDrawer } from "@/components/cart/AddOnsDrawer";
 import ClientLayoutWrapper from "@/components/layout/ClientLayoutWrapper";
 import { WhatsAppWidget } from "@/components/layout/WhatsAppWidget";
+import { SmoothScroll } from "@/components/layout/SmoothScroll";
+import "lenis/dist/lenis.css";
 
 const figtree = Figtree({
   subsets: ["latin"],
@@ -33,11 +35,21 @@ const DESCRIPTION = "A2 ghee, wood cold-pressed oils and lab-tested farm essenti
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: { default: `${SITE_NAME} — Farm to Home`, template: `%s — ${SITE_NAME}` },
+  title: { default: `${SITE_NAME} - Farm to Home`, template: `%s - ${SITE_NAME}` },
   description: DESCRIPTION,
   alternates: { canonical: "/" },
+  icons: {
+    icon: [
+      { url: "/icon.png", type: "image/png" },
+      { url: "/favicon.ico", sizes: "any" },
+    ],
+    shortcut: "/favicon.ico",
+    apple: [
+      { url: "/apple-icon.png", sizes: "180x180", type: "image/png" },
+    ],
+  },
   openGraph: {
-    title: `${SITE_NAME} — Farm to Home`,
+    title: `${SITE_NAME} - Farm to Home`,
     description: DESCRIPTION,
     url: SITE_URL,
     siteName: SITE_NAME,
@@ -47,7 +59,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: `${SITE_NAME} — Farm to Home`,
+    title: `${SITE_NAME} - Farm to Home`,
     description: DESCRIPTION,
     images: ["/og-image.png"],
   },
@@ -73,6 +85,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
         />
         <Providers>
+          <SmoothScroll />
           <div className="sticky top-0 z-50">
             <PromoBar />
             <Suspense fallback={<div className="h-[108px] bg-white shadow-sm" />}>

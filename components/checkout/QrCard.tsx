@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { Loader2, RefreshCw } from "lucide-react";
-import { LogoRow, PayLogo } from "@/components/checkout/PayLogo";
+import { LogoRow, PayLogo } from "./PayLogo";
 
 export interface QrState {
   status: "idle" | "loading" | "shown" | "expired" | "error";

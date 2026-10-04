@@ -1,5 +1,11 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import ProductsContent from "./ProductsContent";
+
+export const metadata: Metadata = {
+  title: "All Products",
+  description: "Browse our farm-fresh A2 ghee, wood cold-pressed oils, and lab-tested organic essentials.",
+};
 
 export default function ProductsPage() {
   return (

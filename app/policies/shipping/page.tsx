@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Shipping & Delivery Policy — Divantraa",
+  title: "Shipping & Delivery Policy",
+  description: "Shipping and Delivery Policy for Divantraa products.",
 };
 
 export default function ShippingPolicyPage() {
