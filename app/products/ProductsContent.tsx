@@ -6,7 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type { Product } from "@/types/product";
 import ProductSection from "@/components/product/ProductSection";
-// import WelcomeBanner from "@/components/product/WelcomeBanner";
+import WelcomeBanner from "@/components/product/WelcomeBanner";
 
 export default function ProductsContent() {
   const searchParams = useSearchParams();
@@ -25,7 +25,7 @@ export default function ProductsContent() {
 
   return (
     <>
-      {/* <WelcomeBanner /> */}
+      <WelcomeBanner />
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-10 min-h-[60vh]">
         <div className="flex items-center mb-6">
           {category && (
