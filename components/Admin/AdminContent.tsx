@@ -15,6 +15,7 @@ import { useAuthStore } from "@/store/useAuthStore";
 import type { Product } from "@/types/product";
 import { getAxiosErrorMessage } from "@/lib/errorUtils";
 import PaymentsPanel, { RefundBox, CancelLineBox } from "@/app/admin/PaymentsPanel";
+import ShippingPanel from "@/app/admin/ShippingPanel";
 import { VariantTable } from "@/app/admin/VariantManager";
 import type { Category } from "@/types/product";
 
@@ -86,7 +87,7 @@ const PACKAGING_OPTIONS = [
 
 // ── Status config ──────────────────────────────────────────────
 
-type AdminTab = "orders" | "payments" | "products" | "users";
+type AdminTab = "orders" | "payments" | "shipping" | "products" | "users";
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
   PENDING: { label: "Pending", color: "bg-amber-100 text-amber-700 border-amber-200", icon: <Clock size={12} /> },
@@ -327,6 +328,7 @@ export default function AdminContent() {
         {([
           { key: "orders", label: "Orders", icon: <ShoppingBag size={15} />, adminOnly: false },
           { key: "payments", label: "Payments", icon: <Wallet size={15} />, adminOnly: false },
+          { key: "shipping", label: "Shipping", icon: <Truck size={15} />, adminOnly: false },
           { key: "products", label: "Products", icon: <Package size={15} />, adminOnly: true },
           { key: "users", label: "Users", icon: <Users size={15} />, adminOnly: true },
         ] as const).map(({ key, label, icon, adminOnly }) => {
@@ -627,6 +629,7 @@ export default function AdminContent() {
       )}
 
       {adminTab === "payments" && <PaymentsPanel isAdmin={isAdmin} />}
+      {adminTab === "shipping" && <ShippingPanel isAdmin={isAdmin} />}
 
       {/* ═══════════════════════════════════════════════════════════
           PRODUCTS TAB

@@ -42,7 +42,7 @@ export default function ProductVariantCard({
             <span className="rounded-full bg-forest px-2 py-0.5 text-[10px] font-semibold text-white">{off}% OFF</span>
           ) : <span />}
           <div className="flex flex-col items-end gap-1">
-            {product.isFeatured && (
+            {variant.isBestSeller && (
               <span className="flex items-center gap-0.5 rounded-full bg-gold px-2 py-0.5 text-[10px] font-semibold text-white">
                 <Star size={9} className="fill-white" /> Best Seller
               </span>

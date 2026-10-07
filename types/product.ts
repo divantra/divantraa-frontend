@@ -34,6 +34,9 @@ export interface ProductVariant {
   images:         string[];                   // variant-specific; [] = use product.images
   resolvedImages: string[];                   // backend resolves: variant.images ?? product.images
   weight:         number | null;              // grams
+  lengthCm:       number;                     // package dimensions, used by Shiprocket courier rating
+  widthCm:        number;                     // (dummy 10cm default until real values are entered)
+  heightCm:       number;
   unitQuantity:   number | null;              // per-unit price basis, e.g. 1
   unitLabel:      string | null;              // e.g. "L" -> "Rs 523/L"
   sortOrder:      number;
@@ -41,6 +44,7 @@ export interface ProductVariant {
   isActive:       boolean;
   avgRating?:     number | null;    // list responses only — real if the product has reviews, else a placeholder
   reviewCount?:   number;
+  isBestSeller?:  boolean;          // list responses only — one randomly (but stably) chosen variant per featured product
 }
 
 // ── Product — the listing ──────────────────────────────────────

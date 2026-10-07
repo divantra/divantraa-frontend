@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { TrustBadges } from "@/components/home/TrustBadges";
 import { CategoryProductSlider } from "@/components/home/CategoryProductSlider";
 import { WhyChooseBlock } from "@/components/home/WhyChooseBlock";
 import Image from "next/image";
@@ -9,7 +8,6 @@ export default function HomePage() {
   return (
     <>
       <main>
-        <TrustBadges />
         <CategoryProductSlider />
         <WhyChooseBlock />
 
