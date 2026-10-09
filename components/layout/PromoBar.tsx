@@ -22,7 +22,7 @@ export function PromoBar() {
         </p>
       ) : (
         <span className="opacity-0 pointer-events-none select-none">
-          Pure Desi Ghee &amp; Oils At 15% OFF | Use Code: DIWAN15
+          Pure Desi Ghee &amp; Oils At 15% OFF | Use Code: DIVANT15
         </span>
       )}
     </aside>

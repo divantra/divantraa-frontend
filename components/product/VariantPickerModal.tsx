@@ -94,7 +94,7 @@ function VariantRow({ product, variant, promo }: { product: Product; variant: Pr
       </div>
 
       {cartQuantity > 0 ? (
-        <div className="flex h-9 shrink-0 items-center justify-between overflow-hidden rounded-full bg-forest shadow-sm">
+        <div className="animate-add-pop flex h-9 shrink-0 items-center justify-between overflow-hidden rounded-full bg-forest shadow-sm">
           <button onClick={() => updateQuantity(variant.id, cartQuantity - 1)} className="flex h-full w-8 items-center justify-center text-white hover:bg-white/10" aria-label="Decrease quantity">
             <Minus size={13} strokeWidth={2.5} />
           </button>
