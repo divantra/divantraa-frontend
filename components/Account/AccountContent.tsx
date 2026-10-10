@@ -178,7 +178,7 @@ function AccountPageInner() {
   const { user, isHydrated } = useAuthStore();
   const logout = useLogout();
   const updateProfile = useUpdateProfile();
-  const deactivateAccount = useDeactivateAccount();
+  // const deactivateAccount = useDeactivateAccount();
 
   useEffect(() => {
     document.title = "My Account - Divantraa";

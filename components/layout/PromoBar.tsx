@@ -1,9 +1,15 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { usePromoConfig } from "@/hooks/usePromoConfig";
 
 export function PromoBar() {
+  const pathname = usePathname();
   const { data: promo, isLoading } = usePromoConfig();
+
+  if (pathname?.startsWith("/admin")) {
+    return null;
+  }
 
   // If query is finished and promo code is explicitly null, collapse bar
   if (!isLoading && !promo?.promoCode) {

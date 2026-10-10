@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import Image from "next/image";
 import { X, Phone } from "lucide-react";
 
@@ -27,7 +28,12 @@ function SupportIcon({ className }: { className?: string }) {
 }
 
 export function WhatsAppWidget() {
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
+
+  if (pathname?.startsWith("/admin")) {
+    return null;
+  }
 
   return (
     <div className="fixed bottom-20 right-4 sm:bottom-6 sm:right-6 z-40 flex flex-col items-end gap-3">
