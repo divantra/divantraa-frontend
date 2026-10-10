@@ -45,6 +45,7 @@ interface AdminOrder {
   paymentMethod: string; paymentStatus: string;
   subtotal: number; shippingFee: number; codFee: number; total: number;
   trackingNumber: string | null; trackingCarrier: string | null;
+  labelUrl: string | null; invoiceUrl: string | null; trackingUrl: string | null;
   cancelReason: string | null; cancelledAt: string | null;
   confirmedAt: string | null; shippedAt: string | null; deliveredAt: string | null;
   createdAt: string;
@@ -471,10 +472,33 @@ export default function AdminContent() {
                       {order.trackingNumber && (
                         <div className="rounded-xl bg-cyan-50 border border-cyan-200 p-4 flex items-start gap-3">
                           <Truck size={16} className="text-cyan-600 mt-0.5 shrink-0" />
-                          <div>
+                          <div className="flex-1">
                             <p className="text-xs font-semibold text-cyan-700">Tracking</p>
-                            <p className="text-sm font-mono text-cyan-900">{order.trackingNumber}</p>
+                            {order.trackingUrl ? (
+                              <a href={order.trackingUrl} target="_blank" rel="noopener noreferrer"
+                                className="text-sm font-mono text-cyan-900 underline hover:no-underline">
+                                {order.trackingNumber}
+                              </a>
+                            ) : (
+                              <p className="text-sm font-mono text-cyan-900">{order.trackingNumber}</p>
+                            )}
                             {order.trackingCarrier && <p className="text-xs text-cyan-600">via {order.trackingCarrier}</p>}
+                            {(order.labelUrl || order.invoiceUrl) && (
+                              <div className="flex gap-3 mt-1.5">
+                                {order.labelUrl && (
+                                  <a href={order.labelUrl} target="_blank" rel="noopener noreferrer"
+                                    className="text-xs font-medium text-cyan-700 underline hover:no-underline">
+                                    Download Label
+                                  </a>
+                                )}
+                                {order.invoiceUrl && (
+                                  <a href={order.invoiceUrl} target="_blank" rel="noopener noreferrer"
+                                    className="text-xs font-medium text-cyan-700 underline hover:no-underline">
+                                    Download Invoice
+                                  </a>
+                                )}
+                              </div>
+                            )}
                           </div>
                         </div>
                       )}

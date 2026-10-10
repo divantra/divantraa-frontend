@@ -44,13 +44,14 @@ interface VariantFormState {
   lengthCm:        string;
   widthCm:         string;
   heightCm:        string;
+  hsnCode:         string;
 }
 
 const emptyVariantForm: VariantFormState = {
   title: "", sku: "", packaging: "", price: "", compareAtPrice: "", stock: "0",
   unitQuantity: "", unitLabel: "", optionSizeKey: "Size", optionSizeValue: "",
   optionContainer: "", isDefault: false,
-  weight: "", lengthCm: "10", widthCm: "10", heightCm: "10",
+  weight: "", lengthCm: "10", widthCm: "10", heightCm: "10", hsnCode: "",
 };
 
 function toVariantForm(v: ProductVariant): VariantFormState {
@@ -64,6 +65,7 @@ function toVariantForm(v: ProductVariant): VariantFormState {
     optionContainer: Container ?? Object.values(restOptions)[0] ?? "", isDefault: v.isDefault,
     weight: v.weight != null ? String(v.weight) : "",
     lengthCm: String(v.lengthCm ?? 10), widthCm: String(v.widthCm ?? 10), heightCm: String(v.heightCm ?? 10),
+    hsnCode: v.hsnCode ?? "",
   };
 }
 
@@ -80,6 +82,7 @@ function buildPayload(f: VariantFormState) {
     lengthCm: f.lengthCm ? parseFloat(f.lengthCm) : undefined,
     widthCm: f.widthCm ? parseFloat(f.widthCm) : undefined,
     heightCm: f.heightCm ? parseFloat(f.heightCm) : undefined,
+    hsnCode: f.hsnCode || undefined,
   };
 }
 
@@ -186,6 +189,11 @@ function VariantFields({ form, setForm }: { form: VariantFormState; setForm: (f:
         <label className="block text-[10px] font-medium text-ink/50 mb-0.5">Height (cm)</label>
         <input type="number" min="0" step="0.1" value={form.heightCm} onChange={(e) => setForm({ ...form, heightCm: e.target.value })}
           className={inputCls} />
+      </div>
+      <div>
+        <label className="block text-[10px] font-medium text-ink/50 mb-0.5">HSN code (GST)</label>
+        <input value={form.hsnCode} onChange={(e) => setForm({ ...form, hsnCode: e.target.value })}
+          placeholder="1515" className={inputCls} />
       </div>
     </div>
   );
