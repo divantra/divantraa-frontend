@@ -94,6 +94,9 @@ interface AdminOrder {
   total: number;
   trackingNumber: string | null;
   trackingCarrier: string | null;
+  labelUrl: string | null;
+  invoiceUrl: string | null;
+  trackingUrl: string | null;
   cancelReason: string | null;
   cancelledAt: string | null;
   confirmedAt: string | null;
@@ -1421,14 +1424,37 @@ export default function AdminContent({ initialTab }: AdminContentProps = {}) {
                                   <Truck size={18} className="text-cyan-700" />
                                   <div>
                                     <p className="text-xs font-bold text-cyan-900">Shipment Tracking</p>
-                                    <p className="text-xs font-mono font-semibold text-cyan-800">
-                                      {order.trackingNumber} {order.trackingCarrier ? `· via ${order.trackingCarrier}` : ""}
-                                    </p>
+                                    {order.trackingUrl ? (
+                                      <a href={order.trackingUrl} target="_blank" rel="noopener noreferrer"
+                                        className="text-xs font-mono font-semibold text-cyan-800 underline hover:no-underline">
+                                        {order.trackingNumber} {order.trackingCarrier ? `· via ${order.trackingCarrier}` : ""}
+                                      </a>
+                                    ) : (
+                                      <p className="text-xs font-mono font-semibold text-cyan-800">
+                                        {order.trackingNumber} {order.trackingCarrier ? `· via ${order.trackingCarrier}` : ""}
+                                      </p>
+                                    )}
+                                    {(order.labelUrl || order.invoiceUrl) && (
+                                      <div className="flex gap-3 mt-1">
+                                        {order.labelUrl && (
+                                          <a href={order.labelUrl} target="_blank" rel="noopener noreferrer"
+                                            className="text-[11px] font-semibold text-cyan-700 hover:underline">
+                                            Download Label
+                                          </a>
+                                        )}
+                                        {order.invoiceUrl && (
+                                          <a href={order.invoiceUrl} target="_blank" rel="noopener noreferrer"
+                                            className="text-[11px] font-semibold text-cyan-700 hover:underline">
+                                            Download Invoice
+                                          </a>
+                                        )}
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
                                 <button
                                   onClick={() => copyToClipboard(order.trackingNumber!, `track-${order.id}`)}
-                                  className="text-xs font-semibold text-cyan-700 hover:underline"
+                                  className="text-xs font-semibold text-cyan-700 hover:underline shrink-0"
                                 >
                                   {copiedId === `track-${order.id}` ? "Copied!" : "Copy AWB"}
                                 </button>
