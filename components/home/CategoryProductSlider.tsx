@@ -769,15 +769,7 @@ export function CategoryProductSlider() {
                         {/* TITLE */}
 
                         <h3
-                          className="
-                            min-h-[40px]
-                            pr-10
-                            text-[15px]
-                            font-semibold
-                            leading-[1.3]
-                            text-ink
-                            sm:text-[16px]
-                          "
+                          className="min-h-[30px] pr-10 text-[15px] font-semibold leading-[1.3] text-ink sm:text-[16px]"
                         >
                           {
                             product.title
@@ -791,12 +783,8 @@ export function CategoryProductSlider() {
                         ).length >
                           0 && (
                             <p
-                              className="
-                              mt-1
-                              truncate
-                              text-[11px]
-                              text-ink/40
-                            "
+                              className="mt-1 truncate text-[12px]
+                              font-semibold text-forest"
                             >
                               {Object.values(
                                 variant.options

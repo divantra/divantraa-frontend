@@ -117,3 +117,81 @@ textarea {
   background-color: #007A6B;
   color: white;
 }
+
+/* ── Admin Dashboard Dark Mode (Frontend-Scoped) ─────────────── */
+.dark {
+  color-scheme: dark;
+}
+
+/* Background overrides for cards and panels inside Admin */
+.dark .bg-white {
+  background-color: #111c30;
+}
+
+.dark .border-ink\/10,
+.dark .border-ink\/15,
+.dark .border-ink\/5,
+.dark .border-slate-200,
+.dark .border-slate-200\/80,
+.dark .border-slate-200\/70,
+.dark .border-slate-100 {
+  border-color: #1e293b;
+}
+
+.dark .text-ink,
+.dark .text-slate-900,
+.dark .text-slate-800 {
+  color: #f1f5f9;
+}
+
+.dark .text-ink\/80,
+.dark .text-ink\/70,
+.dark .text-slate-700,
+.dark .text-slate-600 {
+  color: #cbd5e1;
+}
+
+.dark .text-ink\/50,
+.dark .text-ink\/40,
+.dark .text-slate-500,
+.dark .text-slate-400 {
+  color: #94a3b8;
+}
+
+.dark .bg-slate-50,
+.dark .bg-slate-50\/50,
+.dark .bg-slate-50\/70,
+.dark .bg-slate-50\/80,
+.dark .bg-ink\/\[0\.02\] {
+  background-color: #0e1628;
+}
+
+.dark .bg-slate-100 {
+  background-color: #1e293b;
+}
+
+.dark .hover\:bg-slate-50:hover,
+.dark .hover\:bg-slate-50\/70:hover,
+.dark .hover\:bg-slate-100:hover,
+.dark .hover\:bg-slate-200:hover {
+  background-color: #1e293b;
+}
+
+.dark .divide-slate-100 > :not([hidden]) ~ :not([hidden]),
+.dark .divide-slate-200 > :not([hidden]) ~ :not([hidden]) {
+  border-color: #1e293b;
+}
+
+.dark input:not([type="radio"]):not([type="checkbox"]),
+.dark select,
+.dark textarea {
+  background-color: #0e1628 !important;
+  border-color: #334155 !important;
+  color: #f8fafc !important;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #64748b !important;
+}
+

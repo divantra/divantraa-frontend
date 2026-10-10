@@ -17,6 +17,9 @@ import {
   getDiscountPercent,
   getUnitPriceLabel,
 } from "@/types/product";
+import { ProductTrustBadges } from "@/components/product/ProductTrustBadges";
+import { ProductImageGallery } from "@/components/product/ProductImageGallery";
+import { ProductShippingNotice } from "@/components/product/ProductShippingNotice";
 
 export default function ProductDetailsClient() {
   const { slug } = useParams<{ slug: string }>();
@@ -25,6 +28,7 @@ export default function ProductDetailsClient() {
   const user = useAuthStore((s) => s.user);
   const [isPending, startTransition] = useTransition();
   const [added, setAdded] = useState(false);
+  const [quantity, setQuantity] = useState(1);
   const { data: promo } = usePromoConfig();
 
   // Variant selector — the id chosen in the "Select Variant" dropdown
@@ -96,10 +100,10 @@ export default function ProductDetailsClient() {
           price:        Number(activeVariant.price),
           image:        displayImages[0] ?? "",
         },
-        1
+        quantity
       );
       if (!ok) return; // not signed in — addItem already opened the login modal
-      syncAddToServer(activeVariant.id, 1);
+      syncAddToServer(activeVariant.id, quantity);
       setAdded(true);
       setTimeout(() => setAdded(false), 1500);
     });
@@ -108,17 +112,20 @@ export default function ProductDetailsClient() {
   const handleBuyNow = () => {
     if (!product || !activeVariant) return;
     startTransition(() => {
-      const ok = addItem({
-        productId:    product.id,
-        variantId:    activeVariant.id,
-        title:        product.title,
-        variantTitle: activeVariant.title,
-        slug:         product.slug,
-        price:        Number(activeVariant.price),
-        image:        displayImages[0] ?? "",
-      });
+      const ok = addItem(
+        {
+          productId:    product.id,
+          variantId:    activeVariant.id,
+          title:        product.title,
+          variantTitle: activeVariant.title,
+          slug:         product.slug,
+          price:        Number(activeVariant.price),
+          image:        displayImages[0] ?? "",
+        },
+        quantity
+      );
       if (!ok) return; // not signed in — addItem already opened the login modal
-      syncAddToServer(activeVariant.id, 1);
+      syncAddToServer(activeVariant.id, quantity);
       openCart();
     });
   };
@@ -149,46 +156,18 @@ export default function ProductDetailsClient() {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 grid md:grid-cols-2 gap-8 lg:gap-14">
 
-        {/* ── Image gallery ─────────────────────────────────── */}
-        <div className="md:sticky md:top-28 self-start">
-          {/* Main image */}
-          <div className="aspect-square rounded-3xl bg-white border border-ink/10 shadow-sm relative overflow-hidden mb-4">
-            {displayImages[activeImage] ? (
-              <Image
-                key={displayImages[activeImage]}
-                src={displayImages[activeImage]}
-                alt={`${product.title} — image ${activeImage + 1}`}
-                fill
-                className="object-cover transition-opacity duration-200"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-ink/20">
-                <Package size={64} />
-              </div>
-            )}
-          </div>
-
-          {/* Thumbnail strip — shows all images for the active variant */}
-          {displayImages.length > 1 && (
-            <div className="flex gap-3 overflow-x-auto pb-1">
-              {displayImages.map((img, i) => (
-                <button
-                  key={img}
-                  onClick={() => setActiveImage(i)}
-                  className={`shrink-0 h-20 w-20 rounded-xl overflow-hidden border-2 relative ${
-                    i === activeImage ? "border-leaf" : "border-transparent opacity-60 hover:opacity-100"
-                  }`}
-                >
-                  <Image src={img} alt={`Thumbnail ${i + 1}`} fill className="object-cover" />
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+        {/* ── Image gallery slider (Anveshan style) ──────────────── */}
+        <ProductImageGallery
+          images={displayImages}
+          title={product.title}
+          badge={product.badges?.[0]}
+          activeImage={activeImage}
+          onSelectImage={setActiveImage}
+        />
 
         {/* ── Product info ──────────────────────────────────── */}
         <div>
-          <h1 className="font-display text-3xl lg:text-4xl text-ink mb-3">{product.title}</h1>
+          <h2 className="font-display text-1xl lg:text-2xl text-ink mb-3">{product.title}</h2>
 
           {/* Rating */}
           {!!product.reviewCount && (
@@ -204,7 +183,7 @@ export default function ProductDetailsClient() {
             {activeVariant ? (
               <>
                 <div className="flex items-baseline gap-3 flex-wrap">
-                  <span className="text-3xl font-semibold text-ink">
+                  <span className="text-2xl font-semibold text-ink">
                     ₹{Number(activeVariant.price).toLocaleString("en-IN")}
                   </span>
                   {getDiscountPercent(activeVariant) > 0 && (
@@ -229,7 +208,7 @@ export default function ProductDetailsClient() {
           </div>
 
           {/* Short description */}
-          <p className="text-ink/60 leading-relaxed mb-5">{product.shortDescription}</p>
+          <p className="text-ink/60 leading-relaxed mb-2">{product.shortDescription}</p>
 
           {/* Earn Divantraa Coins + best price with the standing promo code — for the selected variant, live-refreshing as it changes */}
           {activeVariant && (
@@ -280,13 +259,13 @@ export default function ProductDetailsClient() {
                       }`}
                     >
                       <span
-                        className={`block px-3 py-2 text-center text-sm font-medium ${
+                        className={`block px-2 py-1 text-center text-sm font-medium ${
                           selected ? "bg-forest text-white" : "bg-ink/5 text-ink/80"
                         }`}
                       >
                         {v.title}
                       </span>
-                      <span className="block bg-white px-3 py-3">
+                      <span className="block bg-white px-2 py-2">
                         <span className="flex flex-wrap items-baseline gap-x-2">
                           <span className="text-base font-bold text-ink">
                             ₹{Number(v.price).toLocaleString("en-IN")}
@@ -339,54 +318,59 @@ export default function ProductDetailsClient() {
             </div>
           )}
 
-          {/* Cart actions */}
-          <div className="grid grid-cols-2 gap-3 mb-6">
-            {cartQuantity > 0 ? (
-              <div className="animate-add-pop flex items-center justify-center border-2 border-leaf rounded-xl col-span-1">
-                <button
-                  onClick={() => {
-                    if (!activeVariant) return;
-                    const newQty = cartQuantity - 1;
-                    updateQuantity(activeVariant.id, newQty);
-                    syncAddToServer(activeVariant.id, newQty > 0 ? newQty : 0);
-                  }}
-                  className="p-3.5 text-leaf"
-                  aria-label="Decrease"
-                >
-                  <Minus size={18} />
-                </button>
-                <span className="px-3 font-medium text-sm">{cartQuantity} in cart</span>
-                <button
-                  onClick={() => {
-                    if (!activeVariant) return;
-                    const newQty = cartQuantity + 1;
-                    updateQuantity(activeVariant.id, newQty);
-                    syncAddToServer(activeVariant.id, 1);
-                  }}
-                  className="p-3.5 text-leaf"
-                  aria-label="Increase"
-                >
-                  <Plus size={18} />
-                </button>
-              </div>
-            ) : (
+          {/* Cart actions — [ - 1 + ] [ Add to cart ] [ Buy Now ] */}
+          <div className="flex items-center gap-2 sm:gap-3 mb-6 w-full">
+            {/* Quantity Selector */}
+            <div className="flex items-center bg-[#F6F7F6] rounded-xl h-12 w-28 sm:w-32 shrink-0 border border-ink/10">
               <button
-                onClick={handleAddToCart}
-                disabled={isPending || !inStock || !activeVariant}
-                className="flex items-center justify-center gap-2 rounded-xl border-2 border-leaf text-leaf font-medium py-3.5 hover:bg-leaf/5 transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                type="button"
+                onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                disabled={quantity <= 1 || !inStock}
+                className="w-9 sm:w-10 h-full flex items-center justify-center text-ink/70 hover:text-ink disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-lg font-medium select-none"
+                aria-label="Decrease quantity"
               >
-                <ShoppingBag size={18} />
-                {isPending ? "Adding…" : added ? "Added! ✓" : "Add to cart"}
+                –
               </button>
-            )}
+              <span className="flex-1 text-center font-medium text-ink text-sm sm:text-base select-none">
+                {quantity}
+              </span>
+              <button
+                type="button"
+                onClick={() => setQuantity((q) => Math.min(activeVariant?.stock ?? 99, q + 1))}
+                disabled={!inStock || quantity >= (activeVariant?.stock ?? 99)}
+                className="w-9 sm:w-10 h-full flex items-center justify-center text-ink/70 hover:text-ink disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-lg font-medium select-none"
+                aria-label="Increase quantity"
+              >
+                +
+              </button>
+            </div>
+
+            {/* Add to cart button */}
+            <button
+              onClick={handleAddToCart}
+              disabled={isPending || !inStock || !activeVariant}
+              className="flex-1 h-12 rounded-full bg-[#00584B] hover:bg-[#00483D] active:scale-[0.98] text-white font-medium text-sm sm:text-base px-3 sm:px-6 transition-all shadow-xs disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center whitespace-nowrap"
+            >
+              {isPending ? "Adding…" : added ? "Added! ✓" : "Add to cart"}
+            </button>
+
+            {/* Buy Now button */}
             <button
               onClick={handleBuyNow}
               disabled={!inStock || !activeVariant}
-              className="rounded-xl bg-leaf text-white font-medium py-3.5 hover:opacity-90 transition-opacity disabled:opacity-40"
+              className="flex-1 h-12 rounded-full bg-[#EFC902] hover:bg-[#E2BD00] active:scale-[0.98] text-[#00584B] font-medium text-sm sm:text-base px-3 sm:px-6 transition-all shadow-xs disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center whitespace-nowrap"
             >
-              Buy now
+              Buy Now
             </button>
           </div>
+
+          {/* In-cart indicator if already added */}
+          {cartQuantity > 0 && (
+            <p className="text-xs text-forest font-medium -mt-4 mb-5 flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-forest inline-block" />
+              {cartQuantity} already in your cart
+            </p>
+          )}
 
           {/* Lab report link */}
           {product.labReportUrl && (
@@ -402,9 +386,15 @@ export default function ProductDetailsClient() {
 
           {/* Description */}
           <div className="border-t border-ink/10 pt-6">
-            <h2 className="font-medium text-ink mb-3">About this product</h2>
+            <h3 className="text-ink font-bold mb-2">Product Description</h3>
             <p className="text-ink/60 leading-relaxed text-sm">{product.description}</p>
           </div>
+
+          {/* Trust & Guarantee Badges (Right side only) */}
+          <ProductTrustBadges freeShippingThreshold={499} layout="compact" />
+
+          {/* Free shipping & Delivery estimation area */}
+          {/* <ProductShippingNotice freeShippingThreshold={499} /> */}
 
           {/* Certifications */}
           {product.certifications.length > 0 && (

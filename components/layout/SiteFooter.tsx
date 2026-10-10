@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -35,10 +36,15 @@ const policyLinks = [
 ];
 
 export function SiteFooter() {
+  const pathname = usePathname();
   const [email, setEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);
   const [subscribing, setSubscribing] = useState(false);
   const [subscribeError, setSubscribeError] = useState<string | null>(null);
+
+  if (pathname?.startsWith("/admin")) {
+    return null;
+  }
 
   async function handleSubscribe(e: React.FormEvent) {
     e.preventDefault();

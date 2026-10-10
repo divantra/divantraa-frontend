@@ -18,7 +18,6 @@ import { api } from "@/lib/api";
 import type { Product } from "@/types/product";
 import { useDebounce } from "@/hooks/useDebounce";
 import { CartIcon } from "@/components/Icon/CartIcon";
-import { getImageUrl } from "@/lib/image.utils";
 
 // const LOGO_HORIZONTAL = getImageUrl("/public/logo/divantraa-horizontal-logo.png"); // 943×240 — Tight Full HD Sun mark + DIVANTRAA + Tagline "Pure Beginnings. Healthy Living."
 const LOGO_MARK = "/logo-mark.png";           // 242×240 — the sun/leaf mark
@@ -183,6 +182,10 @@ export function SiteHeader() {
   function handleMobileClose() {
     closeMobileMenu();
     setMobileAccountOpen(false);
+  }
+
+  if (pathname?.startsWith("/admin")) {
+    return null;
   }
 
   return (
