@@ -97,6 +97,9 @@ interface AdminOrder {
   labelUrl: string | null;
   invoiceUrl: string | null;
   trackingUrl: string | null;
+  ndrAt: string | null;
+  ndrReason: string | null;
+  ndrResolvedAt: string | null;
   cancelReason: string | null;
   cancelledAt: string | null;
   confirmedAt: string | null;
@@ -348,6 +351,7 @@ export default function AdminContent({ initialTab }: AdminContentProps = {}) {
   const [orderStatus, setOrderStatus] = useState("");
   const [orderSearch, setOrderSearch] = useState("");
   const [orderPage, setOrderPage] = useState(1);
+  const [ndrOnly, setNdrOnly] = useState(false);
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
   const [actionModal, setActionModal] = useState<{ orderId: string; to: string } | null>(null);
   const [shipForm, setShipForm] = useState({ trackingNumber: "", trackingCarrier: "" });
@@ -370,11 +374,12 @@ export default function AdminContent({ initialTab }: AdminContentProps = {}) {
   });
 
   const { data: ordersData, isLoading: ordersLoading, refetch: refetchOrders } = useQuery<{ data: AdminOrder[]; meta: OrderMeta }>({
-    queryKey: ["admin-orders", orderStatus, orderSearch, orderPage],
+    queryKey: ["admin-orders", orderStatus, orderSearch, orderPage, ndrOnly],
     queryFn: async () => {
       const params: Record<string, unknown> = { page: orderPage, limit: 25 };
       if (orderStatus) params.status = orderStatus;
       if (orderSearch) params.search = orderSearch;
+      if (ndrOnly) params.ndr = "true";
       return (await api.get("/admin/orders", { params })).data;
     },
     enabled: canAccess,
@@ -387,7 +392,24 @@ export default function AdminContent({ initialTab }: AdminContentProps = {}) {
     refetchInterval: 60_000,
   });
 
+  // Lightweight standing count of orders needing attention, independent of whatever filter is active —
+  // so the banner below still shows up even if the admin is looking at a different status/search right now.
+  const { data: ndrCount } = useQuery<number>({
+    queryKey: ["admin-orders-ndr-count"],
+    queryFn: async () => (await api.get("/admin/orders", { params: { ndr: "true", limit: 1 } })).data.meta.total,
+    enabled: canAccess,
+    refetchInterval: 60_000,
+  });
+
   // ── Mutations ────────────────────────────────────────────────
+
+  const resolveNdr = useMutation({
+    mutationFn: (orderId: string) => api.post(`/admin/orders/${orderId}/ndr/resolve`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-orders"] });
+      qc.invalidateQueries({ queryKey: ["admin-orders-ndr-count"] });
+    },
+  });
 
   const deleteProduct = useMutation({
     mutationFn: (id: string) => api.delete(`/admin/products/${id}`),
@@ -1181,6 +1203,19 @@ export default function AdminContent({ initialTab }: AdminContentProps = {}) {
           ═══════════════════════════════════════════════════════════ */}
           {adminTab === "orders" && (
             <div className="space-y-6">
+              {/* NDR attention banner — shown regardless of the active filter, so it's never missed */}
+              {!!ndrCount && (
+                <button
+                  onClick={() => { setNdrOnly(true); setOrderStatus(""); setOrderPage(1); }}
+                  className="w-full flex items-center gap-2.5 rounded-2xl bg-amber-50 border border-amber-200 px-5 py-3.5 text-left hover:bg-amber-100 transition-colors"
+                >
+                  <AlertCircle size={16} className="text-amber-600 shrink-0" />
+                  <p className="text-sm text-amber-800">
+                    <span className="font-semibold">{ndrCount} order{ndrCount !== 1 ? "s" : ""}</span> failed a delivery attempt and need{ndrCount === 1 ? "s" : ""} a decision — view
+                  </p>
+                </button>
+              )}
+
               {/* Filter Tabs & Search Controls */}
               <div className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-sm space-y-4">
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
@@ -1195,12 +1230,13 @@ export default function AdminContent({ initialTab }: AdminContentProps = {}) {
                       { key: "DELIVERED", label: "Delivered" },
                       { key: "CANCELLED", label: "Cancelled" },
                     ].map(({ key, label }) => {
-                      const isSelected = orderStatus === key;
+                      const isSelected = !ndrOnly && orderStatus === key;
                       return (
                         <button
                           key={key}
                           onClick={() => {
                             setOrderStatus(key);
+                            setNdrOnly(false);
                             setOrderPage(1);
                           }}
                           className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${
@@ -1213,6 +1249,16 @@ export default function AdminContent({ initialTab }: AdminContentProps = {}) {
                         </button>
                       );
                     })}
+                    <button
+                      onClick={() => { setNdrOnly((v) => !v); setOrderPage(1); }}
+                      className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1 ${
+                        ndrOnly
+                          ? "bg-amber-500 text-white shadow-sm"
+                          : "bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100"
+                      }`}
+                    >
+                      <AlertCircle size={11} /> Needs Attention
+                    </button>
                   </div>
 
                   {/* Search Input */}
@@ -1243,7 +1289,7 @@ export default function AdminContent({ initialTab }: AdminContentProps = {}) {
                   <div className="flex items-center justify-between text-xs text-slate-400 border-t border-slate-100 pt-3">
                     <span>
                       Showing {orders.length} of {meta.total} order{meta.total !== 1 ? "s" : ""}
-                      {orderStatus ? ` · Filtered by ${orderStatus}` : ""}
+                      {ndrOnly ? " · needing attention (failed delivery attempt)" : orderStatus ? ` · Filtered by ${orderStatus}` : ""}
                     </span>
                     <span>Page {meta.page} of {meta.pages || 1}</span>
                   </div>
@@ -1258,7 +1304,7 @@ export default function AdminContent({ initialTab }: AdminContentProps = {}) {
                   <ShoppingBag size={40} className="mx-auto text-slate-300 mb-3" />
                   <h4 className="text-base font-bold text-slate-700">No Orders Found</h4>
                   <p className="text-xs text-slate-400 mt-1">
-                    {orderStatus ? `There are no orders with status "${orderStatus}".` : "No orders matching your criteria."}
+                    {ndrOnly ? "No orders need attention right now." : orderStatus ? `There are no orders with status "${orderStatus}".` : "No orders matching your criteria."}
                   </p>
                 </div>
               ) : (
@@ -1268,11 +1314,13 @@ export default function AdminContent({ initialTab }: AdminContentProps = {}) {
                     const isOpen = expandedOrder === order.id;
                     const displayId = order.orderNumber ?? `#${order.id.slice(0, 8).toUpperCase()}`;
                     const actions = STATUS_ACTIONS[order.status] ?? [];
+                    const needsNdrAttention = !!order.ndrAt && !order.ndrResolvedAt;
 
                     return (
                       <div
                         key={order.id}
                         className={`bg-white rounded-3xl border transition-all overflow-hidden ${
+                          needsNdrAttention ? "border-amber-300 ring-1 ring-amber-200" :
                           isOpen ? "border-[#00584B]/40 shadow-md ring-1 ring-[#00584B]/10" : "border-slate-200/80 shadow-sm hover:border-slate-300"
                         }`}
                       >
@@ -1290,6 +1338,11 @@ export default function AdminContent({ initialTab }: AdminContentProps = {}) {
                                 >
                                   {copiedId === order.id ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
                                 </button>
+                                {needsNdrAttention && (
+                                  <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200">
+                                    <AlertCircle size={9} /> NDR
+                                  </span>
+                                )}
                               </div>
                               <p className="text-[11px] text-slate-400 mt-0.5">{fmt(order.createdAt)} · {fmtTime(order.createdAt).split(",")[1] ?? ""}</p>
                             </div>
@@ -1458,6 +1511,32 @@ export default function AdminContent({ initialTab }: AdminContentProps = {}) {
                                 >
                                   {copiedId === `track-${order.id}` ? "Copied!" : "Copy AWB"}
                                 </button>
+                              </div>
+                            )}
+
+                            {/* NDR — failed delivery attempt, needs a human decision */}
+                            {order.ndrAt && (
+                              <div className={`rounded-2xl border p-4 flex items-start gap-3 ${order.ndrResolvedAt ? "bg-slate-50 border-slate-200" : "bg-amber-50 border-amber-200"}`}>
+                                <AlertCircle size={16} className={`mt-0.5 shrink-0 ${order.ndrResolvedAt ? "text-slate-400" : "text-amber-600"}`} />
+                                <div className="flex-1">
+                                  <p className={`text-xs font-bold ${order.ndrResolvedAt ? "text-slate-500" : "text-amber-800"}`}>
+                                    {order.ndrResolvedAt ? "NDR (resolved)" : "Delivery Attempt Failed — Needs Attention"}
+                                  </p>
+                                  <p className={`text-xs mt-0.5 ${order.ndrResolvedAt ? "text-slate-500" : "text-amber-900"}`}>{order.ndrReason}</p>
+                                  <p className="text-[10px] text-slate-400 mt-1">
+                                    First flagged {fmtTime(order.ndrAt)}
+                                    {order.ndrResolvedAt && ` · resolved ${fmtTime(order.ndrResolvedAt)}`}
+                                  </p>
+                                </div>
+                                {!order.ndrResolvedAt && (
+                                  <button
+                                    onClick={() => resolveNdr.mutate(order.id)}
+                                    disabled={resolveNdr.isPending}
+                                    className="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-xl bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-50 transition-colors"
+                                  >
+                                    Mark Resolved
+                                  </button>
+                                )}
                               </div>
                             )}
 
