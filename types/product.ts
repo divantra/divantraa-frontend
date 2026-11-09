@@ -37,6 +37,7 @@ export interface ProductVariant {
   lengthCm:       number;                     // package dimensions, used by Shiprocket courier rating
   widthCm:        number;                     // (dummy 10cm default until real values are entered)
   heightCm:       number;
+  hsnCode?:       string | null;               // GST HSN/SAC code, sent to Shiprocket for invoice generation
   unitQuantity:   number | null;              // per-unit price basis, e.g. 1
   unitLabel:      string | null;              // e.g. "L" -> "Rs 523/L"
   sortOrder:      number;
